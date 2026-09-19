@@ -7,6 +7,7 @@ import { RouteTable } from './routes/registry'
 import { registerBalanceRoutes } from './routes/balance'
 import { StatusBar } from './statusbar'
 import { WebviewHost } from './webview/host'
+import { pickMood } from './webview/mood'
 import { registerSidebar } from './webview/sidebar'
 import { disposeLog, log, showLog } from './log'
 
@@ -26,6 +27,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const routeTable = new RouteTable()
   registerBalanceRoutes(routeTable, {
     refresh,
+    // 临时：阈值取默认 5，Task 10 起改为读 whaleWidget.lowBalanceThreshold
+    moodOf: result => pickMood({ state: result.state, balance: result.balance, threshold: 5 }),
     readSize: async () => (await store.readJson<Record<string, unknown>>('size.json')) ?? {},
     writeSize: value => store.writeJson('size.json', value),
   })

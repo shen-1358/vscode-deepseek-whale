@@ -1,8 +1,11 @@
 import { jsonResponse, parseQuery, type RouteRequest, type RouteResponse, type RouteTable } from './registry'
 import type { RefreshResult } from '../core/refresh'
+import type { Mood } from '../webview/mood'
 
 export interface BalanceRouteDeps {
   refresh: { (force?: boolean): Promise<RefreshResult>; last(): RefreshResult | null }
+  /** 表情由宿主计算（webview 读不到配置），每次调用现读阈值 */
+  moodOf: (result: RefreshResult) => Mood
   readSize: () => Promise<Record<string, unknown>>
   writeSize: (value: Record<string, unknown>) => Promise<void>
 }
@@ -21,7 +24,12 @@ export function registerBalanceRoutes(table: RouteTable, deps: BalanceRouteDeps)
     const force = parseQuery(req.query).refresh === '1'
     const result = force || !deps.refresh.last() ? await deps.refresh(force) : deps.refresh.last()!
     if (result.state !== 'ok') {
-      return jsonResponse({ ok: false, code: CODE_BY_STATE[result.state] ?? 'UNKNOWN', error: result.message ?? '' })
+      return jsonResponse({
+        ok: false,
+        code: CODE_BY_STATE[result.state] ?? 'UNKNOWN',
+        error: result.message ?? '',
+        mood: deps.moodOf(result),
+      })
     }
     return jsonResponse({
       ok: true,
@@ -30,6 +38,7 @@ export function registerBalanceRoutes(table: RouteTable, deps: BalanceRouteDeps)
       todayUsage: result.todayUsage ?? null,
       stale: result.stale === true,
       observedAt: result.observedAt,
+      mood: deps.moodOf(result),
     })
   })
 

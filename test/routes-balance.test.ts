@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { RouteTable } from '../src/routes/registry'
 import { registerBalanceRoutes } from '../src/routes/balance'
+import { pickMood, type Mood } from '../src/webview/mood'
 import type { RefreshResult } from '../src/core/refresh'
 
 function table(results: RefreshResult[], store?: { readJson: (n: string) => Promise<unknown>; writeJson: (n: string, v: unknown) => Promise<void> }) {
@@ -11,6 +12,8 @@ function table(results: RefreshResult[], store?: { readJson: (n: string) => Prom
   const t = new RouteTable()
   registerBalanceRoutes(t, {
     refresh: refresher,
+    moodOf: (result: RefreshResult): Mood =>
+      pickMood({ state: result.state, balance: result.balance, threshold: 5 }),
     readSize: async () => (store ? (await store.readJson('size.json')) as Record<string, unknown> : {}),
     writeSize: async value => { if (store) await store.writeJson('size.json', value) },
   })
@@ -28,8 +31,20 @@ describe('balance.json', () => {
     expect(res.status).toBe(200)
     expect(JSON.parse(res.body)).toEqual({
       ok: true, totalBalance: 23.45, currency: 'CNY', todayUsage: 1.02, stale: false,
-      observedAt: Date.parse('2026-09-19T02:00:00Z'),
+      observedAt: Date.parse('2026-09-19T02:00:00Z'), mood: 'delighted',
     })
+  })
+
+  it('余额低于阈值时 mood 是坚定', async () => {
+    const low: RefreshResult = { ...OK, balance: 1 }
+    const res = await table([low]).dispatch({ method: 'GET', path: '/dsh-whale/balance.json', query: '' })
+    expect(JSON.parse(res.body).mood).toBe('determined')
+  })
+
+  it('失败分支同样带 mood（未配置密钥 → 困）', async () => {
+    const res = await table([{ state: 'no-key', message: '未配置 API Key' }])
+      .dispatch({ method: 'GET', path: '/dsh-whale/balance.json', query: '' })
+    expect(JSON.parse(res.body)).toMatchObject({ ok: false, code: 'NO_KEY', mood: 'sleepy' })
   })
 
   it('未配置密钥时 ok=false 且带 code', async () => {
@@ -56,6 +71,7 @@ describe('balance.json', () => {
     const t = new RouteTable()
     registerBalanceRoutes(t, {
       refresh: Object.assign(async (force?: boolean) => { seen.push(force === true); return OK }, { last: () => OK }),
+      moodOf: (): Mood => 'delighted',
       readSize: async () => ({}),
       writeSize: async () => {},
     })

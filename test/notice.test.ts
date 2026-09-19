@@ -29,6 +29,10 @@ describe('NOTICE.md 的署名义务', () => {
   it('保留收到权利主张即处理的承诺', () => {
     expect(notice).toContain('移除')
   })
+
+  it('不再把 media/ 整体声明为 MIT（曾与美术章节矛盾）', () => {
+    expect(notice).not.toContain('本项目 `media/` 下的图形')
+  })
 })
 
 describe('LICENSE-ARTWORK', () => {

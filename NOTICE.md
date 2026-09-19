@@ -15,8 +15,9 @@
 上游仓库 `assets/` 目录下的图片、动图与音效**不在 MIT 覆盖范围内**（见上游 `PROVENANCE.md`），
 本项目**未使用**其中任何文件。
 
-本项目 `media/` 下的图形由 `tools/make-placeholder.mjs` 以纯几何方式生成，
-为本项目原创，随本项目 MIT 许可发布。
+本项目 `media/activity-icon.svg`（Activity Bar 图标）为本项目原创，随本项目 MIT 许可发布。
+`media/whale-*.png`（侧边栏的鲸鱼少女三态图）**不在 MIT 覆盖范围内**，按 CC BY-NC-SA 4.0 发布，
+署名与改动说明见下文「鲸鱼少女形象」一节。
 
 ## 鲸鱼少女形象（侧边栏美术，CC BY-NC-SA 4.0）
 

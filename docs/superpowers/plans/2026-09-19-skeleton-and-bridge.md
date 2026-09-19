@@ -334,7 +334,7 @@ git commit -m "chore: 扩展脚手架（三入口构建 / tsconfig / F5 调试�
 **Files:**
 - Create: `src/routes/registry.ts`, `test/registry.test.ts`
 
-- [ ] **Step 1: 写失败测试 `test/registry.test.ts`**
+- [x] **Step 1: 写失败测试 `test/registry.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -449,12 +449,12 @@ describe('RouteTable', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npx vitest run test/registry.test.ts`
 Expected: FAIL — `Failed to resolve import "../src/routes/registry"`。
 
-- [ ] **Step 3: 实现 `src/routes/registry.ts`**
+- [x] **Step 3: 实现 `src/routes/registry.ts`**
 
 ```ts
 export const CHANNEL = 'dshw'
@@ -551,12 +551,12 @@ export class RouteTable {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run test/registry.test.ts`
 Expected: PASS，15 个测试全绿。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/routes/registry.ts test/registry.test.ts

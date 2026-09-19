@@ -5,6 +5,7 @@ tools/**
 docs/**
 node_modules/**
 *.vsix
+media/raw/**
 **/*.ts
 **/*.mjs
 **/*.d.mts

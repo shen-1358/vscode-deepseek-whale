@@ -44,7 +44,7 @@ async function checkMediaShim(): Promise<void> {
   // 注意：img.src 的 getter 永远返回解析后的绝对 URL，
   // 所以不能用「是否仍以 /dsh-whale/ 开头」来判断是否被改写（那恒为真）。
   // 改为检查是否指向映射目标文件，这才是「改写发生了」的证据。
-  const rewritten = img.src.includes('placeholder-whale.png')
+  const rewritten = img.src.includes('whale-delighted.png')
   report('媒体 URL 被改写为映射目标', rewritten, img.src.slice(0, 72))
 
   const ok = await loaded

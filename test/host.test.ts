@@ -34,10 +34,10 @@ describe('buildHtml', () => {
   it('媒体映射以 application/json 脚本注入（不执行，故不受 CSP 限制）', () => {
     const html = buildHtml({
       cspSource: 'c', nonce: 'n', uris,
-      mediaMap: { '/dsh-whale/image.png': 'vscode-webview-resource://x/media/placeholder-whale.png' },
+      mediaMap: { '/dsh-whale/image.png': 'vscode-webview-resource://x/media/whale-delighted.png' },
     })
     expect(html).toContain(`<script type="application/json" id="${MEDIA_MAP_ELEMENT_ID}">`)
-    expect(html).toContain('placeholder-whale.png')
+    expect(html).toContain('whale-delighted.png')
   })
 
   it('转义 JSON 里的尖括号，避免提前闭合脚本标签', () => {

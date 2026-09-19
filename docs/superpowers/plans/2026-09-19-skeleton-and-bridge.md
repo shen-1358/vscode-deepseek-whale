@@ -1931,7 +1931,7 @@ git commit -m "feat(core): 文件存储（原子写）与账本读写"
 **Files:**
 - Create: `src/provider/types.ts`, `src/provider/deepseek.ts`, `test/deepseek.test.ts`
 
-- [ ] **Step 1: 写 `src/provider/types.ts`**
+- [x] **Step 1: 写 `src/provider/types.ts`**
 
 ```ts
 export interface BalanceSnapshot {
@@ -1949,7 +1949,7 @@ export class BalanceError extends Error {
 }
 ```
 
-- [ ] **Step 2: 写失败测试 `test/deepseek.test.ts`**
+- [x] **Step 2: 写失败测试 `test/deepseek.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -2039,12 +2039,12 @@ describe('fetchBalance', () => {
 })
 ```
 
-- [ ] **Step 3: 运行确认失败**
+- [x] **Step 3: 运行确认失败**
 
 Run: `npx vitest run test/deepseek.test.ts`
 Expected: FAIL — 无法解析 `../src/provider/deepseek`。
 
-- [ ] **Step 4: 实现 `src/provider/deepseek.ts`**
+- [x] **Step 4: 实现 `src/provider/deepseek.ts`**
 
 ```ts
 import { BalanceError, type BalanceSnapshot } from './types'
@@ -2123,12 +2123,12 @@ function messageOf(err: unknown): string {
 }
 ```
 
-- [ ] **Step 5: 运行确认通过**
+- [x] **Step 5: 运行确认通过**
 
 Run: `npx vitest run test/deepseek.test.ts`
 Expected: PASS，13 个测试。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/provider/ test/deepseek.test.ts
@@ -3436,3 +3436,26 @@ CJS 给扩展宿主 `require`），于是 `.ts` 被判定为 CJS，而 `src/core
 
 **结果**：`npx vitest run` → **62 个测试全绿**（7 个文件：原 48 + store 6 + ledger 8）；
 `npm run typecheck` 退出码 0。
+
+## Task 10 执行记录
+
+计划的 `types.ts` / `deepseek.ts` / `test/deepseek.test.ts` **原样落地**，
+只加了一段注释（见下），13 个用例一次通过。
+
+**留两个已知缺口给 #1（本次不修，避免擅自扩大范围）**
+
+1. **`balance_infos` 只取 `[0]`**。DeepSeek 目前对单个账号只返回一个币种，
+   所以计划这么写是对的；但多币种数组一旦出现，后面的币种会被**静默丢掉**。
+   已在 `deepseek.ts` 里就地加注释标明。真要支持多币种，得让
+   `BalanceSnapshot` 变成数组、`refresh` 对每个币种各调一次 `observeBalance`
+   ——那是 #1 的设计变更，不是 #0 的搬运工。
+2. **`response.text()` 的失败不在错误分类内**。headers 到手后读 body 仍可能断网，
+   此时抛出的是原始 `TypeError` 而不是 `BalanceError`，`fetchBalance` 的
+   `'AUTH' | 'NETWORK' | 'TIMEOUT' | 'FORMAT'` 四分类会出现第五种「裸异常」。
+   Task 12 的刷新编排必须把未知异常也兜住，不能只 `catch (BalanceError)`。
+
+**另一处没动但值得记的行为**：`is_available: false`（账号余额不足）被解析时
+**直接忽略**——`BalanceSnapshot` 里没有这个字段。对"显示余额"这个目标无害，
+但 #1 若要做"余额不足"提示，必须把它加进快照。
+
+**结果**：`npx vitest run` → **75 个测试全绿**（8 个文件）；`npm run typecheck` 退出码 0。

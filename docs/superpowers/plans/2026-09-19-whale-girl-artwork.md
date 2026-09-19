@@ -1993,3 +1993,28 @@ git tag -a v0.1.0 -m "鲸鱼少女形象落地：三态表情 + CC BY-NC-SA 4.0 
 
 在 `docs/superpowers/plans/` 追加 `2026-09-19-whale-girl-artwork-completion.md`，记录：逐条验收结果、
 与计划的偏差及原因、留给后续（动效 / 气泡 / Activity Bar 剪影 / 多币种阈值）的清单。
+
+---
+
+# 执行交接（2026-09-19 21:20）
+
+**当前状态：Task 1 尚未开始，工作区干净。**
+
+- 分支：`feat/1-whale-girl-artwork`（从 `3442cec` 切出，仅有本文件的文档提交）
+- 上游 pin、镜像可用性、三张源图的色彩类型等**前置事实都已在计划正文里写死**，无需重新探测
+- `media/raw/` 尚未下载（Task 2 会做）；`media/whale-*.png` 尚不存在
+
+**执行协议（按 subagent-driven-development）**
+
+每个 Task：`worker` 实现 → `reviewer` 审 spec 合规 → `reviewer`（换角度）审代码质量；
+任一审查不通过就回到实现者重修、**重审**，全绿才勾选该 Task 的 checkbox 并进入下一个。
+
+- 实现者：默认模型（本任务多为一两个文件、规格完整）
+- 审查者：`deepseek/deepseek-v4-pro`（审查吃判断力）
+- 单个 Task 的完整文本从本文件的 `## Task N:` 小节取，**取该节为止，不要通读全文**
+- 偏差处理：与计划不符就停下来记进「执行记录」，不要静默改设计
+- 每个 Task 结束时跑 `npm run test && npm run typecheck`，按计划里的 commit message 提交
+
+**为什么需要交接**：本会话（20:36 启动）的模型工具表里没有 `subagent`
+——`pi-subagents` 是 21:14 装的，晚于会话启动 38 分钟，工具注册表不会追溯生效。
+新开一个会话即可拿到 `subagent`，本文件与分支已就位，无需其它准备。

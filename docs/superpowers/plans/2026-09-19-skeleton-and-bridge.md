@@ -2556,7 +2556,7 @@ git commit -m "feat(core): 刷新编排（凭据->拉取->记账->落盘，含 s
 **Files:**
 - Create: `src/statusbar.ts`, `test/statusbar.test.ts`
 
-- [ ] **Step 1: 写失败测试 `test/statusbar.test.ts`**
+- [x] **Step 1: 写失败测试 `test/statusbar.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -2628,12 +2628,12 @@ describe('renderStatus', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run test/statusbar.test.ts`
 Expected: FAIL — 无法解析 `../src/statusbar`。
 
-- [ ] **Step 3: 实现 `src/statusbar.ts`**
+- [x] **Step 3: 实现 `src/statusbar.ts`**
 
 ```ts
 import * as vscode from 'vscode'
@@ -2749,12 +2749,12 @@ export class StatusBar {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run test/statusbar.test.ts`
 Expected: PASS，11 个测试。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/statusbar.ts test/statusbar.test.ts
@@ -3574,3 +3574,42 @@ if (book.lastAt != null && at <= book.lastAt) return balanceSummary(ledger, ledg
 
 **结果**：`npx vitest run` → **92 个测试全绿**（10 个文件，refresh 由计划的 8 个变为 9 个）；
 `npm run typecheck` 退出码 0；`npm run build` 三入口成功。
+
+## Task 13 执行记录
+
+**缺陷 1（阻塞性，第三次同款）：纯函数与 `import * as vscode` 同文件**
+
+按计划原文落地后实测：
+
+```
+Error: Cannot find package 'vscode' imported from D:/github_project/vscode_whale_widget/src/statusbar.ts
+```
+
+11 个用例一个都跑不了。计划明明把 `formatMoney` / `renderStatus` 称为"纯函数"、
+还要求给它们写断言字符串的测试，却把它们和 `class StatusBar` 塞进同一个 import vscode 的文件。
+**Task 6（host/html）、Task 11（credentials/keyresolve）已经踩过两次，这是第三次。**
+
+修正：拆成 `src/statusview.ts`（纯渲染，无 vscode）+ `src/statusbar.ts`
+（仅 `StatusBar` 控件外壳），测试改为从 `../src/statusview` import。
+
+> 计划里**同一个错误犯了三遍**，说明这不是笔误，而是写计划时的一个系统性疏忽：
+> 只要模块"同时要做纯逻辑和碰宿主 API"，就必须在计划阶段就拆成两个文件。
+> Task 14 的 `routes/balance.ts` 需要同样警惕（它要碰 `FileStore`，但不应碰 vscode）。
+
+**缺陷 2：测试与实现互相矛盾（JPY）**
+
+```
+FAIL  test/statusbar.test.ts > formatMoney > 其他币种用代码加空格
+AssertionError: expected '¥7.10' to be 'JPY 7.10'
+```
+
+用例要求非列举币种走代码形式，实现却给 `SYMBOLS` 加了 `JPY: '¥'`——
+同一个 `¥` 既是人民币又是日元。判定：**测试的意图是对的**（5 个用例一致），
+**实现多了一条带来歧义的映射**。在只显示余额的状态栏里，把日元显示成 `¥`
+会让人直接读成人民币，属于会说谎的 UI。
+
+修正：`SYMBOLS` 去掉 `JPY`，并在代码里写明"只列无歧义的符号"。
+保留 `EUR` / `GBP`（`€` / `£` 无歧义）。
+
+**结果**：`npx vitest run` → **103 个测试全绿**（11 个文件）；`npm run typecheck` 退出码 0；
+`npm run build` 三入口成功。

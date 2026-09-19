@@ -2314,7 +2314,7 @@ git commit -m "feat(credentials): SecretStorage 优先、环境变量回退的�
 
 这是让验收标准 4（密钥错）与 5（断网沿用旧值）可被自动测试的关键模块。
 
-- [ ] **Step 1: 写失败测试 `test/refresh.test.ts`**
+- [x] **Step 1: 写失败测试 `test/refresh.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -2424,12 +2424,12 @@ describe('createRefresher', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run test/refresh.test.ts`
 Expected: FAIL — 无法解析 `../src/core/refresh`。
 
-- [ ] **Step 3: 实现 `src/core/refresh.ts`**
+- [x] **Step 3: 实现 `src/core/refresh.ts`**
 
 ```ts
 import { observeBalance, balanceSummary, beijingDay } from './accounting.mjs'
@@ -2527,7 +2527,7 @@ export function createRefresher(deps: RefreshDeps): Refresher {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run test/refresh.test.ts`
 Expected: PASS，8 个测试。
@@ -2537,12 +2537,12 @@ Expected: PASS，8 个测试。
 
 若「网络失败但已有历史时沿用旧值并标 stale」失败：确认 `fetchBalance` 的失败分支在写入 `cached` 前读取的是上一次的 `cached`（本实现已如此）。
 
-- [ ] **Step 5: 全量测试 + 类型检查**
+- [x] **Step 5: 全量测试 + 类型检查**
 
 Run: `npm run test && npm run typecheck`
 Expected: 全部 PASS，类型无错误。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/refresh.ts test/refresh.test.ts
@@ -3529,3 +3529,48 @@ error TS7006: Parameter 'key' implicitly has an 'any' type.
 
 **结果**：`npx vitest run` → **83 个测试全绿**（9 个文件）；`npm run typecheck` 退出码 0；
 `npm run build` 三入口成功。
+
+## Task 12 执行记录
+
+**修正 1（Task 11 已预告）**：`refresh.ts` 的 `import type { KeySource }` 来源
+从计划写的 `'../credentials'` 改为 `'../keyresolve'`——前者的静态 `import vscode`
+会让整个模块在 vitest 里加载不了。已在代码里留注释指向本记录。
+
+**修正 2（真缺陷）：测试「余额下降后今日消费被累计」与内核去重规则互相矛盾**
+
+计划把该用例的时钟钉死：
+
+```ts
+const refresh = createRefresher(deps({ ..., now: () => T0 }))
+await refresh()
+balance = 90
+const result = await refresh()
+expect(result.todayUsage).toBe(10)   // ← 实测拿到 0
+```
+
+实测：
+
+```
+FAIL  test/refresh.test.ts > createRefresher > 余额下降后今日消费被累计
+AssertionError: expected +0 to be 10
+```
+
+原因在 `accounting.mjs` 第 91 行：
+
+```js
+// Ignore duplicate/out-of-order samples, including a late sample from yesterday.
+if (book.lastAt != null && at <= book.lastAt) return balanceSummary(ledger, ledger.date)
+```
+
+两次观测的 `at` 都是 `T0` → 第二次被当成重复采样丢弃 → 返回的是上一次的 summary（`amount = 0`）。
+**内核行为是对的**（防同一次刷新重复计费，Task 8 的「重复或乱序的观测被忽略」已经钉过），
+**测试写错了**：真实世界里 `Date.now()` 只会前进，不会原地踏步。
+
+修正：时钟改成可变（`clock = T0 + 3_600_000`），并**额外补一个用例把这条交互钉住**——
+「同一时刻的重复观测不重复计费，时间推进后才累计」，免得后人再把时钟写死。
+
+> 这是一个值得记住的组合效应：`refresh` 的去重**不在自己的代码里**，
+> 而在被搬运的内核里。只看 `refresh.ts` 会以为「都拉到新余额了，怎么不算消费」。
+
+**结果**：`npx vitest run` → **92 个测试全绿**（10 个文件，refresh 由计划的 8 个变为 9 个）；
+`npm run typecheck` 退出码 0；`npm run build` 三入口成功。

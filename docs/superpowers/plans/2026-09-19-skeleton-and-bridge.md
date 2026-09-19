@@ -1322,7 +1322,7 @@ git commit -m "feat(webview): WebviewHost 抽象与 CSP/nonce HTML 生成"
 - Create: `src/webview/probe.ts`, `src/webview/sidebar.ts`, `src/log.ts`
 - Modify: `src/extension.ts`
 
-- [ ] **Step 1: 写 `src/webview/probe.ts`**
+- [x] **Step 1: 写 `src/webview/probe.ts`**
 
 探针同时验证两件事：媒体 shim（`img.src` 改写）与 fetch shim（合成 `Response` 的 `.json()` / `.ok` / `.status`）。
 
@@ -1387,7 +1387,7 @@ async function run(): Promise<void> {
 void run()
 ```
 
-- [ ] **Step 2: 写 `src/log.ts`**
+- [x] **Step 2: 写 `src/log.ts`**
 
 ```ts
 import * as vscode from 'vscode'
@@ -1411,7 +1411,7 @@ export function disposeLog(): void {
 }
 ```
 
-- [ ] **Step 3: 写 `src/webview/sidebar.ts`**
+- [x] **Step 3: 写 `src/webview/sidebar.ts`**
 
 ```ts
 import * as vscode from 'vscode'
@@ -1437,7 +1437,7 @@ export function registerSidebar(context: vscode.ExtensionContext, host: WebviewH
 }
 ```
 
-- [ ] **Step 4: 改 `src/extension.ts` 接线（三条路由此处先用存根，Task 13 换实现）**
+- [x] **Step 4: 改 `src/extension.ts` 接线（三条路由此处先用存根，Task 13 换实现）**
 
 ```ts
 import * as vscode from 'vscode'
@@ -1503,12 +1503,12 @@ export function deactivate(): void {}
 
 `test/host.test.ts` 只测 `buildHtml` / `buildCsp`，不涉及 `WebviewHost`，**无需改动**。
 
-- [ ] **Step 6: 构建**
+- [x] **Step 6: 构建**
 
 Run: `npm run build`
 Expected: 三个 dist 文件产出，无错误。
 
-- [ ] **Step 7: 跑测试**
+- [x] **Step 7: 跑测试**
 
 Run: `npm run test`
 Expected: PASS（38 个测试）。

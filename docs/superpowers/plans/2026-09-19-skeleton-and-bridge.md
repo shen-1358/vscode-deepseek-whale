@@ -34,7 +34,8 @@
 | `tools/make-placeholder.mjs` | 生成占位图的脚本（零依赖 PNG 编码器） |
 | `src/routes/registry.ts` | 信封编解码 + 路由表 + 分发 |
 | `src/webview/shim.ts` | 注入 webview 的 fetch shim 与媒体 shim |
-| `src/webview/host.ts` | `WebviewHost` 抽象 + 内联 HTML/CSP 生成 |
+| `src/webview/host.ts` | `WebviewHost` 抽象（挂载/信封/广播），依赖 vscode |
+| `src/webview/html.ts` | 纯字符串的 HTML/CSP 生成，**不依赖 vscode**（便于测试） |
 | `src/webview/probe.ts` | M1 探针前端（M2 后保留为自检页） |
 | `src/webview/sidebar.ts` | 侧边栏 `WebviewView` 注册 |
 | `src/provider/deepseek.ts` | DeepSeek 余额查询（不 import `vscode`） |
@@ -1086,10 +1087,18 @@ git commit -m "feat(webview): fetch shim 合成 Response 与媒体 URL 改写"
 
 ## Task 6: WebviewHost 抽象与 CSP HTML
 
-**Files:**
-- Create: `src/webview/host.ts`, `test/host.test.ts`
+> ⚠️ **本任务的代码块已被执行期修正过，请以「执行偏差记录」为准。**
+> 原方案把 `buildCsp` / `buildHtml` 放在 `host.ts` 里，并声称「可脱离 VSCode 测试」——
+> 这是错的：`host.ts` 顶部 `import * as vscode from 'vscode'`，而 vscode 是宿主注入的
+> 运行时模块、不在 node_modules 里，**整个模块在 Node/vitest 中根本加载不了**。
+> 实际实现把纯字符串部分拆到了 `src/webview/html.ts`（不 import vscode），
+> 测试从 `../src/webview/html` 与 `../src/webview/shim` 导入。
+> 另：测试里那条「转义尖括号」的断言本身也与实现矛盾（见偏差记录）。
 
-- [ ] **Step 1: 写失败测试 `test/host.test.ts`**
+**Files:**
+- Create: `src/webview/host.ts`, `src/webview/html.ts`, `test/host.test.ts`
+
+- [x] **Step 1: 写失败测试 `test/host.test.ts`**
 
 `buildHtml` 接收已解析好的 URI 字符串，因此可脱离 VSCode 测试。
 
@@ -1154,12 +1163,12 @@ describe('buildHtml', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npx vitest run test/host.test.ts`
 Expected: FAIL — 无法解析 `../src/webview/host`。
 
-- [ ] **Step 3: 实现 `src/webview/host.ts`**
+- [x] **Step 3: 实现 `src/webview/host.ts`**
 
 ```ts
 import { randomBytes } from 'node:crypto'
@@ -1288,17 +1297,17 @@ export class WebviewHost {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run test/host.test.ts`
 Expected: PASS，7 个测试全绿。
 
-- [ ] **Step 5: 类型检查**
+- [x] **Step 5: 类型检查**
 
 Run: `npm run typecheck`
 Expected: 无错误。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/webview/host.ts test/host.test.ts
@@ -1471,7 +1480,10 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {}
 ```
 
-- [ ] **Step 5: 让媒体映射按 webview 会话计算**
+> ✅ **本步骤已在 Task 6 实现时预先应用**（`HostOptions.mediaMap` 一开始就写成工厂签名），无需重复。
+> 下面保留原方案描述供追溯。
+
+- [x] **Step 5: 让媒体映射按 webview 会话计算**
 
 媒体 URI 依赖具体 webview 会话（不同 session 的 host 组件不同），所以 `HostOptions.mediaMap` 不能是静态对象，而要是一个**接收「文件名 → URI」工厂、返回映射表**的函数，由 `attach()` 在每次挂载时调用。
 
@@ -3324,3 +3336,39 @@ git log --oneline
 > ⚠️ #1 用真实鲸鱼形象替换占位图时，此测试需同步更新或删除。
 
 测试总数因此由 101 变为 **105**。
+
+## Task 6 执行记录
+
+**计划缺陷 1：模块边界错误（阻塞性）**
+
+计划声称 `buildHtml` "接收已解析好的 URI 字符串，因此可脱离 VSCode 测试"，于是把
+`buildCsp` / `buildHtml` 与 `WebviewHost` 放在同一个 `host.ts`。但 `host.ts` 必须
+`import * as vscode from 'vscode'`，而 `vscode` 是**宿主注入的运行时模块**，
+不在 `node_modules` 中。实测报错：
+
+```
+Error: Cannot find package 'vscode' imported from src/webview/host.ts
+```
+
+即**整个模块在 Node/vitest 里根本无法加载**，测试文件 0 个用例可跑。
+
+修正：把纯字符串生成拆到 `src/webview/html.ts`（不 import vscode），
+`host.ts` 只保留与宿主 API 打交道的部分并 import 它。
+这与 spec §5.2 的边界原则一致（"每个模块一个职责"）。
+
+**计划缺陷 2：测试断言与实现互相矛盾**
+
+`escapeJsonForScript` 转义 `<` `>` `&` 三个字符，但计划里的测试断言写的是
+`expect(html).toContain('</script>')` —— 期望 `>` **不被**转义。
+两者无法同时成立。
+
+判定：**实现是对的**（多转义 `>` 可额外防住 `-->` 与 `]]>` 场景），**测试写错了**。
+修正为更精确的断言：把 JSON 数据块整体取出，验证其中**不存在任何裸尖括号**，
+并包含 `</script>`。这不是放松断言，而是把断言写准。
+
+**顺带修正的自身验证缺陷**：此前我用 `npm run typecheck | tail -3; echo "exit=$?"`
+报告退出码——那测到的是 `tail` 的退出码，不是 `tsc` 的。已改为
+`npm run typecheck > log 2>&1; echo "exit=$?"`，本任务起所有退出码均为真实值。
+
+**结果**：`test/host.test.ts` 7 个测试全绿；全量 **38** 个测试全绿（与 Task 7 预期的 38 一致）；
+`tsc --noEmit` 退出码 0；三入口构建成功。

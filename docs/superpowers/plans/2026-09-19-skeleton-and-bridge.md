@@ -41,7 +41,7 @@
 | `src/provider/types.ts` | `BalanceSnapshot` 等共享类型 |
 | `src/credentials.ts` | 密钥解析链（SecretStorage → env）+ 纯逻辑 `resolveKey` |
 | `src/core/accounting.mjs` | 上游内核，逐字节原样搬运 |
-| `src/core/accounting.d.ts` | 手写类型声明 |
+| `src/core/accounting.d.mts` | 手写类型声明 |
 | `src/core/store.ts` | 文件读写 + 原子写 |
 | `src/core/ledger.ts` | 账本形状与读写 |
 | `src/core/refresh.ts` | 刷新编排（纯逻辑，依赖注入） |
@@ -59,9 +59,14 @@
 ## Task 1: 项目脚手架
 
 **Files:**
-- Create: `package.json`, `tsconfig.json`, `esbuild.mjs`, `.gitignore`, `.vscode/launch.json`, `.vscode/tasks.json`, `media/activity-icon.svg`
+- Create: `package.json`, `tsconfig.json`, `esbuild.mjs`, `.gitignore`, `.vscodeignore`, `.vscode/launch.json`, `.vscode/tasks.json`, `media/activity-icon.svg`, `src/webview/shim.ts`（占位）, `src/webview/probe.ts`（占位）
 
-- [ ] **Step 1: 写 `.gitignore`**
+> ⚠️ `esbuild.mjs` 是**三入口**，所以 `src/webview/shim.ts` 与 `probe.ts` 必须此刻就存在——
+> 入口文件缺失会让 esbuild 直接报 `Could not resolve` 而构建失败。这两个文件在 Task 1 里只是占位，Task 4/5/7 会填上真实内容。
+
+- [x] **Step 1: 写 `.gitignore` 与 `.vscodeignore`**
+
+`.gitignore`：
 
 ```
 node_modules/
@@ -70,7 +75,26 @@ dist/
 .DS_Store
 ```
 
-- [ ] **Step 2: 写 `package.json`**
+`.vscodeignore`（阻止源码与文档被塞进 `.vsix`，只留运行必需物）：
+
+```
+.vscode/**
+src/**
+test/**
+tools/**
+docs/**
+node_modules/**
+*.vsix
+**/*.ts
+**/*.mjs
+**/*.d.mts
+tsconfig.json
+esbuild.mjs
+.gitignore
+.gitattributes
+```
+
+- [x] **Step 2: 写 `package.json`**
 
 ```json
 {
@@ -130,14 +154,14 @@ dist/
     "@types/node": "^22.10.2",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^4.0.0",
-    "esbuild": "^0.24.2",
+    "esbuild": "^0.28.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^5.0.1"
   }
 }
 ```
 
-- [ ] **Step 3: 写 `tsconfig.json`**
+- [x] **Step 3: 写 `tsconfig.json`**
 
 ```json
 {
@@ -157,11 +181,11 @@ dist/
     "noUnusedParameters": true,
     "noImplicitOverride": true
   },
-  "include": ["src/**/*.ts", "src/**/*.mjs", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.mts", "src/**/*.mjs", "test/**/*.ts"]
 }
 ```
 
-- [ ] **Step 4: 写 `esbuild.mjs`**
+- [x] **Step 4: 写 `esbuild.mjs`**
 
 ```js
 import { build, context } from 'esbuild'
@@ -208,7 +232,7 @@ if (watch) {
 }
 ```
 
-- [ ] **Step 5: 写 `.vscode/launch.json`**
+- [x] **Step 5: 写 `.vscode/launch.json`**
 
 ```json
 {
@@ -226,7 +250,7 @@ if (watch) {
 }
 ```
 
-- [ ] **Step 6: 写 `.vscode/tasks.json`**
+- [x] **Step 6: 写 `.vscode/tasks.json`**
 
 ```json
 {
@@ -243,7 +267,7 @@ if (watch) {
 }
 ```
 
-- [ ] **Step 7: 写 `media/activity-icon.svg`（临时美术，#1 随鲸鱼形象重做）**
+- [x] **Step 7: 写 `media/activity-icon.svg`（临时美术，#1 随鲸鱼形象重做）**
 
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -251,7 +275,9 @@ if (watch) {
 </svg>
 ```
 
-- [ ] **Step 8: 建 `src/extension.ts` 占位以便构建通过**
+- [x] **Step 8: 建三个占位源文件，让构建能过**
+
+`src/extension.ts`：
 
 ```ts
 import * as vscode from 'vscode'
@@ -267,7 +293,19 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {}
 ```
 
-- [ ] **Step 9: 安装依赖并构建**
+`src/webview/shim.ts`（占位，Task 4/5 填真实内容）：
+
+```ts
+export {}
+```
+
+`src/webview/probe.ts`（占位，Task 7 填真实内容）：
+
+```ts
+export {}
+```
+
+- [x] **Step 9: 安装依赖并构建**
 
 Run:
 ```bash
@@ -277,12 +315,12 @@ npm run build
 
 Expected: 无错误；`dist/extension.js`、`dist/dshw-shim.js`、`dist/probe.js` 三个文件存在（后两个此步为空 bundle，属正常）。
 
-- [ ] **Step 10: 类型检查**
+- [x] **Step 10: 类型检查**
 
 Run: `npm run typecheck`
 Expected: 无输出（0 错误）。
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add -A
@@ -669,7 +707,7 @@ git commit -m "feat(media): 零依赖脚本生成占位鲸鱼图（自有几何�
 ## Task 4: 媒体 URL 归一化与映射（shim 的纯逻辑部分）
 
 **Files:**
-- Create: `src/webview/shim.ts`, `test/shim.test.ts`
+- Modify: `src/webview/shim.ts`（替换 Task 1 的占位内容）, `test/shim.test.ts`
 
 先写 shim 里**可纯函数测试**的部分（URL 判断、键归一化、映射解析），DOM 劫持部分在 Task 5 接上。
 
@@ -1497,7 +1535,7 @@ git commit -m "feat(webview): 探针前端与侧边栏注册，M1 验收通过
 ## Task 8: 搬运记账内核（逐字节 + 行为保证）
 
 **Files:**
-- Create: `src/core/accounting.mjs`（从上游复制）, `src/core/accounting.d.ts`, `test/accounting.test.ts`
+- Create: `src/core/accounting.mjs`（从上游复制）, `src/core/accounting.d.mts`, `test/accounting.test.ts`
 
 - [ ] **Step 1: 复制内核并校验逐字节一致**
 
@@ -1513,7 +1551,7 @@ sha256sum /tmp/upstream/DeepSeek-Balance-Whale-Widget-main/lib/accounting.mjs sr
 
 Expected: 两行 **sha256 完全相同**。
 
-- [ ] **Step 2: 写 `src/core/accounting.d.ts`**
+- [ ] **Step 2: 写 `src/core/accounting.d.mts`**
 
 ```ts
 export declare const ACCOUNTING_VERSION: 1
@@ -1699,7 +1737,7 @@ Expected: 无错误。若 `.d.ts` 与实际签名不符，TS 会在此报错。
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/core/accounting.mjs src/core/accounting.d.ts test/accounting.test.ts
+git add src/core/accounting.mjs src/core/accounting.d.mts test/accounting.test.ts
 git commit -m "feat(core): 搬运上游记账内核（逐字节一致）+ 类型声明与行为测试
 
 来源 MeteorNOX/DeepSeek-Balance-Whale-Widget (MIT, Copyright (c) 2026 MeteorNOX)
@@ -3230,3 +3268,30 @@ git log --oneline
 - spec §11 的 8 条验收全部通过
 - `src/core/accounting.mjs` 与上游 sha256 一致
 - 产出可安装的 `.vsix`
+
+---
+
+# 执行偏差记录
+
+## 预检修正（动手前发现，已在计划中修正）
+
+| # | 问题 | 若不修的后果 | 修正 |
+|---|---|---|---|
+| 1 | `esbuild.mjs` 是三入口，但 `src/webview/shim.ts` / `probe.ts` 要到 Task 4/7 才创建 | Task 1 的 `npm run build` 直接报 `Could not resolve`，**第 9 步就卡死** | Task 1 Step 8 改为创建三个占位源文件 |
+| 2 | 内核的类型声明命名为 `accounting.d.ts` | TypeScript 对 `x.mjs` 只认 `x.d.mts`；`accounting.d.ts` 会被忽略 → `import type { Ledger } from './accounting.mjs'` 报类型错误 | 重命名为 `accounting.d.mts`，并把 `tsconfig.include` 加上 `src/**/*.mts` |
+| 3 | 缺 `.vscodeignore` | `.vsix` 会把 `src/`、`test/`、`docs/` 一起打进去 | Task 1 Step 1 增加 `.vscodeignore` |
+
+## Task 1 执行记录
+
+**依赖版本上调**（计划原定 vitest ^2.1.8 / esbuild ^0.24.2）：
+
+- `npm audit` 报 5 个漏洞（3 moderate / 1 high / 1 critical），全部集中在 vitest / vite / esbuild 的开发期依赖树
+- 逐个核实触发条件：**均只在"起 dev server / Vitest UI server"时成立**，本项目只用 `vitest run`（批处理）与 esbuild CLI 构建，技术上不受影响
+- 鉴于本仓库要公开发布，且**当时一个测试都还没写（升 vitest 的零迁移成本时刻）**，决定升级：
+  - `vitest` 2.1.9 → **5.0.1**
+  - `esbuild` 0.24.2 → **0.28.2**
+  - `typescript` 保持 5.7.2（不在审计范围内，5→7 跨两个大版本属无谓风险）
+- 升级过程：首次 `npm install` 因旧 lock 文件的 vite 5.x 与 vitest 5 的 `peer vite@^6|^7|^8` 冲突而 ERESOLVE，清掉 `node_modules` + `package-lock.json` 后重装成功
+- 结果：**`npm audit` → found 0 vulnerabilities**；`npm run build` 与 `npm run typecheck` 均通过
+
+**本 Step 的已知状态**：`npx vitest run` 此时报 `No test files found, exiting with code 1`，属预期——第一个测试文件在 Task 2 才出现。

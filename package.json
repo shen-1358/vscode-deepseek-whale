@@ -1,0 +1,62 @@
+{
+  "name": "vscode-whale-widget",
+  "displayName": "鲸鱼记账挂件",
+  "description": "在 VSCode 里实时查看 DeepSeek API 余额、今日已用与峰谷定价",
+  "version": "0.0.1",
+  "publisher": "shen-1358",
+  "license": "MIT",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "whale.setApiKey", "title": "鲸鱼: 设置 DeepSeek API Key" },
+      { "command": "whale.clearApiKey", "title": "鲸鱼: 清除已保存的 API Key" },
+      { "command": "whale.refresh", "title": "鲸鱼: 立即刷新余额" },
+      { "command": "whale.showLog", "title": "鲸鱼: 显示日志" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "whaleWidget", "title": "鲸鱼记账挂件", "icon": "media/activity-icon.svg" }
+      ]
+    },
+    "views": {
+      "whaleWidget": [
+        { "id": "whale.widget", "name": "小鲸鱼", "type": "webview" }
+      ]
+    },
+    "configuration": {
+      "title": "鲸鱼记账挂件",
+      "properties": {
+        "whaleWidget.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 15,
+          "description": "自动刷新间隔（秒）"
+        },
+        "whaleWidget.envVarName": {
+          "type": "string",
+          "default": "DEEPSEEK_API_KEY",
+          "description": "未保存密钥时回退读取的环境变量名"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.1"
+  }
+}

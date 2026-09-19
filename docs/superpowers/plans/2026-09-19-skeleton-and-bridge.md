@@ -1558,7 +1558,7 @@ git commit -m "feat(webview): 探针前端与侧边栏注册，M1 验收通过
 **Files:**
 - Create: `src/core/accounting.mjs`（从上游复制）, `src/core/accounting.d.mts`, `test/accounting.test.ts`
 
-- [ ] **Step 1: 复制内核并校验逐字节一致**
+- [x] **Step 1: 复制内核并校验逐字节一致**
 
 Run:
 ```bash
@@ -1572,7 +1572,7 @@ sha256sum /tmp/upstream/DeepSeek-Balance-Whale-Widget-main/lib/accounting.mjs sr
 
 Expected: 两行 **sha256 完全相同**。
 
-- [ ] **Step 2: 写 `src/core/accounting.d.mts`**
+- [x] **Step 2: 写 `src/core/accounting.d.mts`**
 
 ```ts
 export declare const ACCOUNTING_VERSION: 1
@@ -1657,7 +1657,7 @@ export declare function eventEstimate(ledger: Ledger, day: string): number
 export declare function daySummary(ledger: Ledger, day: string): Record<string, unknown>
 ```
 
-- [ ] **Step 3: 写失败测试 `test/accounting.test.ts`**
+- [x] **Step 3: 写失败测试 `test/accounting.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -1745,17 +1745,17 @@ describe('observeBalance', () => {
 })
 ```
 
-- [ ] **Step 4: 运行测试确认通过（内核是既有的，所以直接应为 PASS）**
+- [x] **Step 4: 运行测试确认通过（内核是既有的，所以直接应为 PASS）**
 
 Run: `npx vitest run test/accounting.test.ts`
 Expected: PASS。若有 FAIL，说明搬运或 `.d.ts` 有误，修正后再继续。
 
-- [ ] **Step 5: 类型检查（确认 `.d.ts` 与实现匹配）**
+- [x] **Step 5: 类型检查（确认 `.d.ts` 与实现匹配）**
 
 Run: `npm run typecheck`
 Expected: 无错误。若 `.d.ts` 与实际签名不符，TS 会在此报错。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/accounting.mjs src/core/accounting.d.mts test/accounting.test.ts
@@ -3372,3 +3372,49 @@ Error: Cannot find package 'vscode' imported from src/webview/host.ts
 
 **结果**：`test/host.test.ts` 7 个测试全绿；全量 **38** 个测试全绿（与 Task 7 预期的 38 一致）；
 `tsc --noEmit` 退出码 0；三入口构建成功。
+
+## Task 8 执行记录
+
+**逐字节校验通过**：`sha256sum` 与上游 `lib/accounting.mjs` 一致
+（`9d7111c87e415caebf56fc26bcf4b490697ef97a6a8ad6f2be037f0a32f341fb`），未做任何修改。
+
+计划里那条 `cp` 写了两遍（同一源到同一目标），第 4 行是笔误，无副作用。
+
+**计划缺陷 1：测试断言与内核行为矛盾（Step 3/4 直接 FAIL）**
+
+计划写的用例是"非法币种抛错"，用 `currency: 'RMB'` 断言 `toThrow()`。
+但内核的校验是：
+
+```js
+const currency = String(snapshot.currency || 'CNY').toUpperCase()
+if (!/^[A-Z]{3}$/.test(currency)) throw new Error('余额币种无效')
+```
+
+只校验**形状**（三位大写字母），`'RMB'` 形状合法 → 不抛错 → 1 个用例红。
+
+判定：**内核是 vendored 代码，必须逐字节保持原样，不改**；**测试写错了**（把 `'RMB'`
+当成了非法币种，实际它只是"非 ISO 代码"，内核并不做 ISO 校验）。
+修正为如实记录既有边界：`'RMB'` 被接受，`'RMBX'` / `'¥'` 才抛错。
+
+**计划缺陷 2：`tsconfig.json` 的 `module: Node16` 无法导入 `.mjs`（Step 5 直接 FAIL）**
+
+```
+test/accounting.test.ts(16,8): error TS1479: The current file is a CommonJS module
+whose imports will produce 'require' calls; however, the referenced file is an
+ECMAScript module and cannot be imported with 'require'.
+```
+
+原因：`package.json` 没有 `"type": "module"`（也不能加，`dist/extension.js` 必须是
+CJS 给扩展宿主 `require`），于是 `.ts` 被判定为 CJS，而 `src/core/accounting.mjs`
+是 ESM。**只写 `accounting.d.mts` 并不能消除 TS1479**——已实测确认。
+
+这个坑不只影响测试：Task 9/12 的 `ledger.ts`、`refresh.ts` 同样要 `import` 这个内核，
+会撞同一堵墙，所以必须在配置层修，不能靠改测试文件名绕过。
+
+修正：`tsconfig.json` 的 `module: Node16` → `preserve`、
+`moduleResolution: Node16` → `bundler`。本项目真正的打包器是 esbuild（tsconfig 只做
+`noEmit` 类型检查），`bundler` 正是为"打包器负责模块解析"的场景准备的模式。
+类型检查严格度不变（`strict` / `noUnusedLocals` 等均保留）。
+
+**结果**：`npx vitest run` → **48 个测试全绿**（5 个文件）；`npm run typecheck` 退出码 0；
+`npm run build` 三入口构建成功。

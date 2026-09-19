@@ -720,7 +720,7 @@ git commit -m "feat(media): 零依赖脚本生成占位鲸鱼图（自有几何�
 
 先写 shim 里**可纯函数测试**的部分（URL 判断、键归一化、映射解析），DOM 劫持部分在 Task 5 接上。
 
-- [ ] **Step 1: 写失败测试 `test/shim.test.ts`**
+- [x] **Step 1: 写失败测试 `test/shim.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -786,12 +786,12 @@ describe('parseMediaMap', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npx vitest run test/shim.test.ts`
 Expected: FAIL — 无法解析 `../src/webview/shim`。
 
-- [ ] **Step 3: 写 `src/webview/shim.ts` 的纯逻辑部分**
+- [x] **Step 3: 写 `src/webview/shim.ts` 的纯逻辑部分**
 
 ```ts
 export const CHANNEL = 'dshw'
@@ -847,12 +847,12 @@ export function parseMediaMap(json: string): Map<string, string> {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npx vitest run test/shim.test.ts`
 Expected: PASS，12 个测试全绿。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/webview/shim.ts test/shim.test.ts

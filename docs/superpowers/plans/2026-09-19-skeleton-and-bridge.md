@@ -3090,7 +3090,7 @@ git commit -m "feat: 装配扩展根：状态栏轮询、命令、路由接线"
 **Files:**
 - Create: `LICENSE`, `NOTICE.md`, `README.md`
 
-- [ ] **Step 1: 写 `LICENSE`**
+- [x] **Step 1: 写 `LICENSE`**
 
 ```
 MIT License
@@ -3116,7 +3116,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-- [ ] **Step 2: 写 `NOTICE.md`**
+- [x] **Step 2: 写 `NOTICE.md`**
 
 ````markdown
 # 第三方归属声明
@@ -3140,7 +3140,7 @@ SOFTWARE.
 为本项目原创，随本项目 MIT 许可发布。
 ````
 
-- [ ] **Step 3: 写 `README.md`**
+- [x] **Step 3: 写 `README.md`**
 
 ````markdown
 # vscode_whale_widget
@@ -3205,7 +3205,7 @@ npm run package   # 产出 .vsix
 MIT。记账内核复用自 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget)（MIT, Copyright (c) 2026 MeteorNOX），详见 `NOTICE.md`。上游的美术素材不在 MIT 范围内，本项目未使用。
 ````
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add LICENSE NOTICE.md README.md
@@ -3672,3 +3672,21 @@ AssertionError: expected '¥7.10' to be 'JPY 7.10'
 **结果**：`npx vitest run` → **116 个测试全绿**（13 个文件，比计划的 105 多 11：
 Task 9 补 8 + Task 12 补 1 + 本 Task 补 2）；`npm run typecheck` 退出码 0；
 `npm run build` 三入口成功。
+
+## Task 16 执行记录
+
+三个文件（`LICENSE` / `NOTICE.md` / `README.md`）**按计划原文落地**，无改动。
+
+**额外做了一次事实核查**：`NOTICE.md` 里有两条对第三方的**事实性声明**，写错就是对外发布假声明，
+所以拿 Task 8 留下的上游解压副本逐条对了一遍（不是凭记忆）：
+
+| NOTICE.md 的声明 | 核对结果 |
+|---|---|
+| 上游许可是 `MIT License, Copyright (c) 2026 MeteorNOX` | ✅ 上游 `LICENSE` 第 3 行一字不差 |
+| `assets/` 下的图片/动图/音效**不在 MIT 覆盖范围内**，见上游 `PROVENANCE.md` | ✅ 该文件第一节的许可范围表明确写 `assets/**`「**不适用 MIT**」，理由是"美术素材的来源与权利状态往往无法百分之百举证" |
+| `src/core/accounting.mjs` 逐字节复制、未修改 | ✅ Task 8 已用 sha256 比对（`9d7111c8…41fb`） |
+
+顺带确认 `LICENSE` / `NOTICE.md` / `README.md` **不在 `.vscodeignore` 里**，
+所以会被打进 `.vsix`（许可与归属声明必须随包分发，否则 MIT 的"保留版权声明"条件不满足）。
+
+**结果**：本 Task 无代码改动，测试与类型检查状态不变（116 全绿 / `tsc` 0 错误）。

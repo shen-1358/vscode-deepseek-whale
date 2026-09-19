@@ -2142,7 +2142,7 @@ git commit -m "feat(provider): DeepSeek 余额查询与响应解析"
 **Files:**
 - Create: `src/credentials.ts`, `test/credentials.test.ts`
 
-- [ ] **Step 1: 写失败测试 `test/credentials.test.ts`**
+- [x] **Step 1: 写失败测试 `test/credentials.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -2208,12 +2208,12 @@ describe('resolveKey', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run test/credentials.test.ts`
 Expected: FAIL — 无法解析 `../src/credentials`。
 
-- [ ] **Step 3: 实现 `src/credentials.ts`**
+- [x] **Step 3: 实现 `src/credentials.ts`**
 
 ```ts
 import * as vscode from 'vscode'
@@ -2293,12 +2293,12 @@ export class Credentials {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run test/credentials.test.ts`
 Expected: PASS，8 个测试。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/credentials.ts test/credentials.test.ts
@@ -3459,3 +3459,73 @@ CJS 给扩展宿主 `require`），于是 `.ts` 被判定为 CJS，而 `src/core
 但 #1 若要做"余额不足"提示，必须把它加进快照。
 
 **结果**：`npx vitest run` → **75 个测试全绿**（8 个文件）；`npm run typecheck` 退出码 0。
+
+## Task 11 执行记录
+
+这个 Task 原样执行会**直接卡死**，三个缺陷都在计划里，逐一实测后修正。
+
+**缺陷 1（阻塞性）：模块边界错误，Task 6 的坑复现了一遍**
+
+计划把 `resolveKey` 等纯逻辑与 `class Credentials` 一起放进 `src/credentials.ts`，
+而该文件第一行就是 `import * as vscode from 'vscode'`。按计划原文落地后实测：
+
+```
+Error: Cannot find package 'vscode' imported from D:/github_project/vscode_whale_widget/src/credentials.ts
+```
+
+8 个用例一个都跑不了。**Task 6 的执行记录里已经写明了这条边界规则**
+（"`vscode` 是宿主注入的运行时模块，不在 `node_modules` 中"），Task 11 的
+计划却没照做——写计划的人只把 `credentials.ts` 当作"纯逻辑 + 类"，
+没意识到两者不可能同文件共存。
+
+修正：拆成 `src/keyresolve.ts`（纯逻辑，无 vscode）+ `src/credentials.ts`
+（只保留 `Credentials` 外壳），测试改为从 `../keyresolve` import。
+与 Task 6 拆 `html.ts` / `host.ts` 是同一手法。
+
+**刻意不 re-export**：`credentials.ts` 没有 `export * from './keyresolve'`——
+否则日后有人从它 import 一个常量，又会踩同一堵墙。代价是
+**Task 12 计划代码里的 `import type { KeySource } from '../credentials'`
+（计划第 2439 行）需要改成 `'../keyresolve'`**，执行 Task 12 时一并修正。
+
+**缺陷 2：`SecretStore` 的返回类型与 VSCode API 不兼容**
+
+```
+src/credentials.ts(16,7): error TS2322: Type 'SecretStorage' is not assignable to type 'SecretStore'.
+  The types returned by 'get(...)' are incompatible ...
+  Type 'Thenable<string | undefined>' is missing the following properties from type 'Promise<...>': catch, finally, [Symbol.toStringTag]
+```
+
+`vscode.SecretStorage` 的方法返回 `Thenable`，计划把接口写成 `Promise`，
+于是真实的 `this.context.secrets` **根本传不进去**。修正：接口返回类型改为
+`PromiseLike`——调用侧只用 `await`，这才是这里真正需要的契约；也省掉一层
+纯转换、且无法测试的适配函数。
+
+**缺陷 3：测试替身把 `store` 同时当作数据袋和方法名**
+
+计划里的替身长这样：
+
+```ts
+function secrets(initial = {}): SecretStore & { store: Record<string, string> } {
+  return {
+    store: { ...initial },          // ← 数据袋叫 store
+    async get(key) { return this.store[key] },
+    async set(key, value) { ... },  // ← 实现的是 set，而接口要的是 store
+    ...
+  } as SecretStore & { store: Record<string, string> }
+}
+```
+
+接口方法名是 `store`（跟随 VSCode），数据袋也叫 `store` → 直接冲突；
+方法又写成 `set`，于是 `as` 断言被 TS 判为
+
+```
+error TS2352: Conversion of type '...' to type 'SecretStore & { store: Record<string, string>; }'
+may be a mistake because neither type sufficiently overlaps
+error TS7006: Parameter 'key' implicitly has an 'any' type.
+```
+
+修正：数据袋收进闭包（`const data`），方法名对齐接口，去掉 `as` 断言。
+顺带消掉了 `this` 在对象字面量方法里的类型问题。
+
+**结果**：`npx vitest run` → **83 个测试全绿**（9 个文件）；`npm run typecheck` 退出码 0；
+`npm run build` 三入口成功。

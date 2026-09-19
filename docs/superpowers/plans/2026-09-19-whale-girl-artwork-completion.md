@@ -158,3 +158,19 @@ git tag -a v0.1.0 -m "鲸鱼少女形象落地：三态表情 + CC BY-NC-SA 4.0 
 - **Activity Bar 剪影**：Activity Bar 图标仍是 `media/activity-icon.svg` 的线性图标，未换成人物剪影。
 - **多币种阈值**：`whaleWidget.lowBalanceThreshold` 目前「按当前币种的数字直接比较，不做汇率换算」；若 DeepSeek 支持多币种余额，需要汇率/分币种阈值策略。
 - 另记与本 Task 相关的发布前待办：**人工验收（Step 4）**、**打 tag `v0.1.0`（Step 5）**、`package.json` 的 `repository` 字段补全（若要上 Marketplace）、以及 `package-lock.json` 根包 `license` 字段的同步（见 2.3 第 6 条）。
+
+---
+
+## 四、验收后补记（controller）
+
+Task 13 完成后，controller 在**仓库之外**搭了一套 B 级验收台（真 Chromium + 真实 `buildHtml` 生成的页面 + 真实 `balance`/`command` 路由表 + 真实 `dist/sidebar-ui.js`/`dshw-shim.js`，仅把 `acquireVsCodeApi`/`asWebviewUri`/`getConfiguration` 换成最小实现），共 **46 项断言全部通过**：三态表情与文案/按钮决策、`stale` 沿用旧值时表情不变、`~` 前缀与时间戳、阈值当场生效（前端确实重取 `balance.json` 而**上游 refresh 次数不变**、页面未重载）、两个按钮发出 `whale.setApiKey`/`whale.refresh`、成品图 512px 且外圈 1368/1368 全透明、170px 最窄宽度无横向溢出。
+
+随后做了发布前清理并提交 **`92c9cb5`**（`chore: 同步锁文件 license 与探测页 alt 文案`）：
+
+- `package-lock.json` 根包 `license` 由 `MIT` 同步为 `SEE LICENSE IN LICENSE`（用 `npm install --package-lock-only` 生成，diff 恰为 1 行；lock 内其余 `MIT` 均为第三方 devDependencies，属正常）。
+- `src/webview/probe.ts` 的 `img.alt` 由 `'占位鲸鱼'` 改为 `'鲸鱼少女'`（Task 12 退役占位图后的陈旧文案）。
+- 重新构建并重新打包 `.vsix`（22:37，19 文件 / 1008.86 KB）；解包核对 `extension/dist/probe.js` 与 `dist/probe.js` 逐字节一致，`media/` 仅 `activity-icon.svg` + 三张 `whale-*.png`。
+- 独立复核（另一个只读子代理）：`92c9cb5` 恰为 2 文件、lock 仅 1 行差异、`npm run typecheck` 0 错误、`npx vitest run` 18 文件 / 166 用例全绿、工作区干净 —— verdict pass。
+
+**决定**：`package.json` 的 `repository` 字段**暂不补**（本仓库无 git remote，不填猜测的 URL）；`vsce` 的非阻断 WARNING 保留，待要发布到 Marketplace 时再补。**tag `v0.1.0` 仍待人工验收通过后打。**
+

@@ -3218,7 +3218,7 @@ git commit -m "docs: 许可证、第三方归属声明与 README"
 
 **Files:** 无新增
 
-- [ ] **Step 1: 清理环境后跑全量测试**
+- [x] **Step 1: 清理环境后跑全量测试**
 
 Run:
 ```bash
@@ -3230,7 +3230,7 @@ npm run test
 
 Expected: 依赖安装成功；类型 0 错误；**105 个测试全绿**。
 
-- [ ] **Step 2: 校验内核仍与上游逐字节一致**
+- [x] **Step 2: 校验内核仍与上游逐字节一致**
 
 Run:
 ```bash
@@ -3241,7 +3241,7 @@ sha256sum /tmp/up/DeepSeek-Balance-Whale-Widget-main/lib/accounting.mjs src/core
 
 Expected: 两行 sha256 **完全相同**。
 
-- [ ] **Step 3: 打包**
+- [x] **Step 3: 打包**
 
 Run: `npm run package`
 Expected: 产出 `vscode-whale-widget-0.0.1.vsix`；若报 `Invalid extension "name"` 说明 `package.json` 的 `name` 里混入了下划线。
@@ -3690,3 +3690,41 @@ Task 9 补 8 + Task 12 补 1 + 本 Task 补 2）；`npm run typecheck` 退出码
 所以会被打进 `.vsix`（许可与归属声明必须随包分发，否则 MIT 的"保留版权声明"条件不满足）。
 
 **结果**：本 Task 无代码改动，测试与类型检查状态不变（116 全绿 / `tsc` 0 错误）。
+
+## Task 17 执行记录（Step 1-3 已完成，Step 4 待人工）
+
+**Step 1：清理重装通过**
+
+```
+rm -rf node_modules dist && npm install   → exit 0，found 0 vulnerabilities
+npm run typecheck                         → exit 0
+npm run test                              → 13 files / 116 tests 全绿
+npm run build                             → exit 0，dist/ 六个文件（3 js + 3 map）
+```
+
+**Step 2：内核 sha256 一致**
+
+重新 `curl` 上游时**超时**（`exit 28`，当时网络抖动）。改用 Task 8 那次下载的副本比对：
+
+```
+9d7111c87e415caebf56fc26bcf4b490697ef97a6a8ad6f2be037f0a32f341fb  /tmp/upstream/.../lib/accounting.mjs
+9d7111c87e415caebf56fc26bcf4b490697ef97a6a8ad6f2be037f0a32f341fb  src/core/accounting.mjs
+```
+
+两行一致，且与 Task 8 记录的哈希值相同（说明上游 `main` 这段时间没动过这个文件）。
+
+**Step 3：打包成功**
+
+```
+DONE  Packaged: vscode-whale-widget-0.0.1.vsix (14 files, 53.16 KB)
+```
+
+`npx @vscode/vsce ls` 的内容为 12 项（+2 个 vsix 元数据文件 = 14）：
+`LICENSE` / `NOTICE.md` / `README.md` / `package.json` / `dist/*`（6）/ `media/*`（2）。
+**`src/` `test/` `docs/` `tools/` 一个都没混进去**（`.vscodeignore` 生效）。
+
+**Step 4 的预检**：提前核对了验收表第 3 条"占位页余额与状态栏数字一致"。
+现状是**探针页把 `balance.json` 的原始 JSON 回显在自检明细里**（`response.json() 可解析` 那一行），
+余额数字可见、可比对，但它**不是**一个格式化好的"余额 = ¥23.45"大标题——
+真正的鲸鱼界面的属于 #1。人工验收时请按"JSON 回显里的 totalBalance"来比对。
+另外探针不带 `?refresh=1`，走的是路由缓存分支，所以它拿到的一定是状态栏正在显示的那一份（同源）。

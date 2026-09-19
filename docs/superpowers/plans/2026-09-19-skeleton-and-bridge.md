@@ -1772,7 +1772,7 @@ git commit -m "feat(core): 搬运上游记账内核（逐字节一致）+ 类型
 **Files:**
 - Create: `src/core/store.ts`, `src/core/ledger.ts`, `test/store.test.ts`
 
-- [ ] **Step 1: 写失败测试 `test/store.test.ts`**
+- [x] **Step 1: 写失败测试 `test/store.test.ts`**
 
 ```ts
 import { afterEach, describe, expect, it } from 'vitest'
@@ -1839,12 +1839,12 @@ function readdirNames(dir: string): string[] {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run test/store.test.ts`
 Expected: FAIL — 无法解析 `../src/core/store`。
 
-- [ ] **Step 3: 实现 `src/core/store.ts`**
+- [x] **Step 3: 实现 `src/core/store.ts`**
 
 ```ts
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
@@ -1890,12 +1890,12 @@ function isNotFound(err: unknown): boolean {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run test/store.test.ts`
 Expected: PASS，6 个测试。
 
-- [ ] **Step 5: 写 `src/core/ledger.ts`**
+- [x] **Step 5: 写 `src/core/ledger.ts`**
 
 ```ts
 import type { Ledger } from './accounting.mjs'
@@ -1914,7 +1914,7 @@ export async function saveLedger(store: FileStore, ledger: Ledger): Promise<void
 }
 ```
 
-- [ ] **Step 6: 类型检查 + 提交**
+- [x] **Step 6: 类型检查 + 提交**
 
 Run: `npm run typecheck`
 Expected: 无错误。
@@ -3418,3 +3418,21 @@ CJS 给扩展宿主 `require`），于是 `.ts` 被判定为 CJS，而 `src/core
 
 **结果**：`npx vitest run` → **48 个测试全绿**（5 个文件）；`npm run typecheck` 退出码 0；
 `npm run build` 三入口构建成功。
+
+## Task 9 执行记录
+
+计划里的 `store.ts` / `ledger.ts` 实现与测试**未做修改**，原样落地。
+
+**补了计划漏掉的一点**：计划的 Task 9 只列了 `test/store.test.ts`，
+`ledger.ts` 一个测试都没有。但那两行形状守卫
+（`!raw || typeof raw !== 'object' || Array.isArray(raw)`）
+正是写反了也没人发现的代码，于是新增 `test/ledger.test.ts`（8 个用例）：
+存取往返、落盘文件名、缺失文件、形状不对（`[]` / `"字符串"` / `null` / `3`）退回空账本、
+以及「JSON 语法损坏仍向上抛」。
+
+最后一条是**故意把边界钉在「不吞异常」上**：`loadLedger` 只兜形状、不兜语法，
+截断的 `ledger.json` 会抛给调用方（Task 12）决定降级策略。顺手在 `ledger.ts`
+的注释里写清了这个区分——原计划的注释只字未提，容易让人误以为它会吞掉一切。
+
+**结果**：`npx vitest run` → **62 个测试全绿**（7 个文件：原 48 + store 6 + ledger 8）；
+`npm run typecheck` 退出码 0。

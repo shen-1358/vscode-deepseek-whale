@@ -32,7 +32,7 @@ export function formatMoney(value: number, currency: string): string {
   return symbol ? `${symbol}${amount}` : `${currency} ${amount}`
 }
 
-function beijingStamp(ms: number): string {
+export function beijingStamp(ms: number): string {
   const d = new Date(ms + 8 * 3600_000)
   const date = d.toISOString().slice(0, 10)
   const time = d.toISOString().slice(11, 16)

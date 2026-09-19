@@ -5,6 +5,7 @@
   "version": "0.0.1",
   "publisher": "shen-1358",
   "license": "SEE LICENSE IN LICENSE",
+  "repository": { "type": "git", "url": "git+https://github.com/shen-1358/vscode-whale-widget.git" },
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
   "main": "./dist/extension.js",

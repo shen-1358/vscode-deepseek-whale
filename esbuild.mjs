@@ -32,6 +32,14 @@ const targets = [
     format: 'iife',
     target: 'chrome110',
   },
+  {
+    ...common,
+    entryPoints: ['src/webview/sidebar-ui.ts'],
+    outfile: 'dist/sidebar-ui.js',
+    platform: 'browser',
+    format: 'iife',
+    target: 'chrome110',
+  },
 ]
 
 if (watch) {

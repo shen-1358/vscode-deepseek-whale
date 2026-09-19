@@ -19,13 +19,20 @@ interface Attachable {
   onDidReceiveMessage: (cb: (message: unknown) => void) => vscode.Disposable
 }
 
+export type WebviewPage = 'sidebar' | 'probe'
+
+const PAGES: Record<WebviewPage, { entry: string[]; rootId: string; rootPlaceholder: string }> = {
+  sidebar: { entry: ['dist', 'sidebar-ui.js'], rootId: 'app', rootPlaceholder: '' },
+  probe: { entry: ['dist', 'probe.js'], rootId: 'probe', rootPlaceholder: '正在自检…' },
+}
+
 export class WebviewHost {
   private readonly targets = new Set<vscode.Webview>()
   private readonly disposables: vscode.Disposable[] = []
 
   constructor(private readonly options: HostOptions) {}
 
-  attach(target: Attachable): void {
+  attach(target: Attachable, page: WebviewPage = 'sidebar'): void {
     const webview = target.webview
     webview.options = {
       enableScripts: true,
@@ -41,15 +48,18 @@ export class WebviewHost {
     const asMediaUri = (fileName: string): string =>
       webview.asWebviewUri(vscode.Uri.joinPath(this.options.extensionUri, 'media', fileName)).toString()
 
+    const pageConfig = PAGES[page]
     webview.html = buildHtml({
       cspSource: webview.cspSource,
       nonce,
       uris: {
         shim: asCheckedUri(['dist', 'dshw-shim.js']),
-        entry: asCheckedUri(['dist', 'probe.js']),
+        entry: asCheckedUri(pageConfig.entry),
         media: asMediaUri(''),
       },
       mediaMap: this.options.mediaMap(asMediaUri),
+      rootId: pageConfig.rootId,
+      rootPlaceholder: pageConfig.rootPlaceholder,
     })
 
     this.targets.add(webview)

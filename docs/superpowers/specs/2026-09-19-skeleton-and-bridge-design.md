@@ -111,6 +111,7 @@ vscode_whale_widget/
 ├─ NOTICE.md                    第三方归属：accounting.mjs 来源与许可
 ├─ README.md                    面向 GitHub 访客
 ├─ .gitignore                   node_modules / dist / *.vsix
+├─ .gitattributes               强制 LF（保护 accounting.mjs 的逐字节一致性）+ 媒体标二进制
 ├─ .vscode/
 │  ├─ launch.json               F5 启动扩展宿主
 │  └─ tasks.json                调用 esbuild 构建
@@ -344,6 +345,7 @@ webview 侧（#1 起）
 - 上游**代码**为 MIT：`Copyright (c) 2026 MeteorNOX`。
 - 上游 `assets/**`（图片 / 动图 / 音效）**不适用 MIT**：按其 `PROVENANCE.md`，「按 as-is 随插件分发、仅用于运行本插件；不授予再许可」。**本项目为公开发布项目，故一律不使用上游美术素材。**
 - `src/core/accounting.mjs` **逐字节原样搬运**，不添加任何注释或改动，以保证可随时与上游 diff。归属声明写在 `LICENSE` 与 `NOTICE.md`，而非源文件内。
+- 为保这个逐字节承诺不被静默破坏，仓库根放 `.gitattributes`，用 `* text=auto eol=lf` 抵消 Windows 默认的 `core.autocrlf=true`（否则 checkout 会把 LF 转 CRLF，上游比对与哈希校验全部失效），并把 `*.png|gif|jpg|mp3|wav|vsix` 标为 `binary` 以免媒体被当文本转换。
 - `#0` 的 `media/` 占位图**由本项目自行生成**（纯几何图形），不使用任何第三方素材，随本项目 MIT 授权。
 - #1 起的鲸鱼形象需另做设计决策（自绘 / 自行生成 / 选用可自由再分发的开源素材），不在本期范围。
 

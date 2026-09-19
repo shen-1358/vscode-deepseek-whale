@@ -1,0 +1,19 @@
+# 换行符策略
+#
+# 背景：Windows 的 core.autocrlf=true 会在 checkout 时把 LF 转成 CRLF，
+# 这会让 src/core/accounting.mjs 与上游不再是逐字节相同（spec §13 的承诺）。
+# 因此强制仓库内外一律 LF。
+* text=auto eol=lf
+
+# 媒体资源必须标为二进制，避免被当文本做换行符转换（会损坏文件）
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.mp3 binary
+*.wav binary
+*.vsix binary
+
+# 锁文件与快照不参与 diff 统计
+package-lock.json -diff

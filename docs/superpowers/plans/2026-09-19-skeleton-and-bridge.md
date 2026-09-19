@@ -2769,7 +2769,7 @@ git commit -m "feat(statusbar): 状态栏渲染纯函数与控制器"
 - Create: `src/routes/balance.ts`, `test/routes-balance.test.ts`
 - Modify: `src/webview/host.ts`（加 `mediaMap` 工厂，若 Task 7 已改则跳过）
 
-- [ ] **Step 1: 写失败测试 `test/routes-balance.test.ts`**
+- [x] **Step 1: 写失败测试 `test/routes-balance.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -2884,12 +2884,12 @@ describe('image.png', () => {
 })
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run test/routes-balance.test.ts`
 Expected: FAIL — 无法解析 `../src/routes/balance`。
 
-- [ ] **Step 3: 实现 `src/routes/balance.ts`**
+- [x] **Step 3: 实现 `src/routes/balance.ts`**
 
 ```ts
 import { jsonResponse, parseQuery, type RouteRequest, type RouteResponse, type RouteTable } from './registry'
@@ -2957,12 +2957,12 @@ export function registerBalanceRoutes(table: RouteTable, deps: BalanceRouteDeps)
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run test/routes-balance.test.ts`
 Expected: PASS，11 个测试。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/routes/balance.ts test/routes-balance.test.ts
@@ -3612,4 +3612,30 @@ AssertionError: expected '¥7.10' to be 'JPY 7.10'
 保留 `EUR` / `GBP`（`€` / `£` 无歧义）。
 
 **结果**：`npx vitest run` → **103 个测试全绿**（11 个文件）；`npm run typecheck` 退出码 0；
+`npm run build` 三入口成功。
+
+## Task 14 执行记录
+
+**这个 Task 干净落地**：`balance.ts` 与 `test/routes-balance.test.ts` 一字未改，
+11 个用例一次全过。值得记一笔的是**为什么这次没出事**——计划本身就把边界划对了：
+`BalanceRouteDeps` 收的是 `readSize` / `writeSize` 两个函数，而不是 `FileStore` 实例，
+所以 `routes/balance.ts` 既不 import `vscode`、也不 import `node:fs`，
+在 vitest 里能直接跑。前三处（Task 6/11/13）的教训在这里**没有复发**。
+
+**`Modify src/webview/host.ts` 这一步跳过**：计划自己写了"若 Task 7 已改则跳过"，
+核实 Task 7 确实已经加了 `mediaMap` 工厂（`host.ts` 第 13 行声明、第 52 行注入），
+形态与计划一致（`(mediaUri) => Record<string, string>`），无需重做。
+
+**顺带确认两条设计意图没有走样**：
+
+1. `image.png` 路由返回 404 是**故意的兜底**，body 写着 `media is served via asWebviewUri`
+   ——与 M1 探针的结论一致：媒体不过消息通道。
+2. `size.json` 的 PUT 只接受**对象**（拒 `[1]`、拒 `{oops`），因为它的消费者是
+   前端界面缩放配置，数组或标量进来没有意义。
+
+**当前状态**：`src/extension.ts` 里仍是 Task 7 的两个存根路由（balance.json / size.json），
+与 `registerBalanceRoutes` 并存但互不冲突（测试不加载 `extension.ts`），
+**Task 15 会用真实路由替换掉存根**。
+
+**结果**：`npx vitest run` → **114 个测试全绿**（12 个文件）；`npm run typecheck` 退出码 0；
 `npm run build` 三入口成功。

@@ -2018,3 +2018,60 @@ git tag -a v0.1.0 -m "鲸鱼少女形象落地：三态表情 + CC BY-NC-SA 4.0 
 **为什么需要交接**：本会话（20:36 启动）的模型工具表里没有 `subagent`
 ——`pi-subagents` 是 21:14 装的，晚于会话启动 38 分钟，工具注册表不会追溯生效。
 新开一个会话即可拿到 `subagent`，本文件与分支已就位，无需其它准备。
+
+---
+
+# 执行记录（controller 追加）
+
+执行方式：subagent-driven-development。每个 Task：`worker` 实现 → `oracle` 审 spec 合规 →
+`reviewer` 审代码质量；任一审查不通过就退回实现者修复并**重审**，全绿才进入下一个 Task。
+
+## DEV-1 · Task 1 用例「透明像素不把边缘染黑（alpha 加权）」自相矛盾（已批准勘误）
+
+- **发现**：首轮实现者逐字照抄计划代码后，该用例 `expect(small.pixels[4]).toBeGreaterThan(200)`
+  必然失败（实测得 `0`），因此计划里「PASS（11 个用例）」不可达。
+- **根因**：用例把源图最右**两个**像素（索引 2、3）都清零，而 4→2 的边锚定盒式缩放下，
+  右侧输出像素的采样区间恰好是 `[2,4)`——全部透明，输出本就该是全透明。
+  断言与用例注释（「左半白不透明、右半全透明…左像素应仍是白色」）互相矛盾；`resizeRgba` 实现无误。
+- **勘误**（只改测试，`tools/png.mjs` 逐字不动）：删除 `img.pixels[8..11] = 0` 那一行，
+  只保留最右一列透明，并把注释改成说明「右侧输出像素混合了不透明白与全透明，
+  未做 alpha 加权时红通道会掉到约 127」。
+- **验证**：controller 用 `node` 实测——原布局右侧输出像素 `[0,0,0,0]`；勘误后 `[255,255,255,128]`，
+  仍能区分 alpha 加权（255）与朴素平均（127）。
+- **影响**：`resizeRgba` 被 Task 3 的成品缩放复用，故选择改测试而非改实现。
+
+## DEV-2 · Task 6 顺带改名 `uris.probe` → `uris.entry`（预先批准的最小偏差）
+
+`HtmlUris` 改名后 `src/webview/host.ts` 的 `buildHtml` 调用会类型报错，故允许在该 Task
+顺手把 `host.ts` 里那一个属性名改成 `entry`，以保持每个 Task 结束时 `npm run typecheck` 为绿。
+Task 9 再做完整的页面参数化。
+
+## DEV-3 · Task 8 提交后 `typecheck` 短暂为红（预先批准的时序窗口）
+
+Task 8 给 `registerBalanceRoutes` 加了必填的 `moodOf`，而调用点 `src/extension.ts` 要到
+Task 10 才接线。故 Task 8 只保证测试全绿、`typecheck` 的唯一报错点写在提交说明与执行记录里，
+Task 10 修复。
+
+## DEV-4 · 审查不通过时的修复使用新的 `worker`（而非 resume 同一子代理）
+
+多轮修复走「新的 `worker` + 完整发现清单 + 原实现者报告」的交接；优先尝试 `resume`，
+失败则回退到新 `worker`。目的是避免长链路 resume 的不确定性，同时保持「一个写入者」。
+
+## DEV-5 · Task 8 提前接线 `moodOf`（DEV-3 的漏判修正，已批准）
+
+- **发现**：DEV-3 只预判了 `typecheck` 变红，实际还有**运行期**后果：
+  `test/activate.test.ts` 用真实 `activate()` 走真实路由，`deps.moodOf` 为 `undefined` 时
+  在 `dispatch` 内部抛错、被 `RouteTable` 兜成 **500**（实测 200→500，`activate.test.ts:134`）。
+- **勘误**：允许 Task 8 在计划清单之外给 `src/extension.ts` 加 2 行临时接线
+  （`import { pickMood }` + `moodOf: result => pickMood({ state, balance, threshold: 5 })`，
+  附一行「临时：Task 10 起改为读配置」的中文注释）。Task 10 按计划把这两行改写成
+  `threshold()` 读 `whaleWidget.lowBalanceThreshold` 的版本。
+- **理由**：不让 `npm run test` 在 Task 8→9 期间为红（Task 9 的验收步骤要求全量测试全绿），
+  且该接线性本来就在 Task 10 的范围内，提前两行不引入新设计。
+
+## DEV-6 · Task 8 测试片段 `totalBalance` 笔误（已批准）
+
+计划里 `const low: RefreshResult = { ...OK, totalBalance: 1, balance: 1 }` 会触发 TS2353——
+`RefreshResult`（`src/core/refresh.ts:11`）没有 `totalBalance` 字段。按批准删掉该属性
+（`{ ...OK, balance: 1 }`）；断言只读 `mood`，行为完全一致。
+

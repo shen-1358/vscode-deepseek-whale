@@ -568,10 +568,10 @@ git commit -m "feat(routes): 信封编解码与路由表"
 ## Task 3: 生成占位鲸鱼图（自有版权）
 
 **Files:**
-- Create: `tools/make-placeholder.mjs`
+- Create: `tools/make-placeholder.mjs`, `test/placeholder-image.test.ts`
 - Output: `media/placeholder-whale.png`
 
-- [ ] **Step 1: 写 `tools/make-placeholder.mjs`**
+- [x] **Step 1: 写 `tools/make-placeholder.mjs`**
 
 零依赖 PNG 编码器。**这是本项目自有的纯几何图形，不含任何第三方素材**（spec §13）。
 
@@ -681,7 +681,7 @@ writeFileSync('media/placeholder-whale.png', png)
 console.log(`wrote media/placeholder-whale.png (${png.length} bytes)`)
 ```
 
-- [ ] **Step 2: 生成并校验是合法 PNG**
+- [x] **Step 2: 生成并校验是合法 PNG**
 
 Run:
 ```bash
@@ -691,11 +691,20 @@ python -c "from PIL import Image; im=Image.open('media/placeholder-whale.png'); 
 
 Expected: `wrote media/placeholder-whale.png (... bytes)` 且校验输出 `sig ok: true IHDR w/h: 256 256 bitDepth: 8 colorType: 6`。
 
-- [ ] **Step 3: 肉眼确认图形可辨认**
+- [x] **Step 3: 跑特征像素测试**
 
-用资源管理器打开 `media/placeholder-whale.png`，确认是一只可辨认的蓝色鲸鱼（若形状不可辨认，调整 `pixel()` 里的圆心与半径后重跑 Step 2）。
+`test/placeholder-image.test.ts` 用零依赖的 PNG 解码器采样关键位置的颜色（瞳孔/眼白/鲸身/腹部/嘴/尾鳍/水柱/背景），
+用于拦住「`if` 判定顺序写错导致某分支永远不可达」这类肉眼难辨的错误。
 
-- [ ] **Step 4: Commit**
+Run: `npx vitest run test/placeholder-image.test.ts`
+Expected: PASS，4 个测试。
+
+- [x] **Step 4: 肉眼确认图形可辨认**
+
+打开 `media/placeholder-whale.png`，确认是一只可辨认的蓝色鲸鱼。
+若形状不可辨认，调整 `pixel()` 里的圆心与半径后重跑 Step 2 与 Step 3。
+
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/make-placeholder.mjs media/placeholder-whale.png
@@ -1490,7 +1499,7 @@ Expected: 三个 dist 文件产出，无错误。
 - [ ] **Step 7: 跑测试**
 
 Run: `npm run test`
-Expected: PASS（34 个测试）。
+Expected: PASS（38 个测试）。
 
 - [ ] **Step 8: 🔍 M1 人工验收（关键的探针环节）**
 
@@ -3048,7 +3057,7 @@ export function deactivate(): void {}
 - [ ] **Step 2: 类型检查
 
 Run: `npm run typecheck && npm run test`
-Expected: 类型无错误；测试全绿（registry 15 + shim 12 + host 7 + accounting 10 + store 6 + deepseek 13 + credentials 8 + refresh 8 + statusbar 11 + routes 11 = 101）。
+Expected: 类型无错误；测试全绿（registry 15 + shim 12 + host 7 + placeholder 4 + accounting 10 + store 6 + deepseek 13 + credentials 8 + refresh 8 + statusbar 11 + routes 11 = 105）。
 
 - [ ] **Step 3: 构建**
 
@@ -3207,7 +3216,7 @@ npm run typecheck
 npm run test
 ```
 
-Expected: 依赖安装成功；类型 0 错误；**101 个测试全绿**。
+Expected: 依赖安装成功；类型 0 错误；**105 个测试全绿**。
 
 - [ ] **Step 2: 校验内核仍与上游逐字节一致**
 
@@ -3264,7 +3273,7 @@ git log --oneline
 ## 完成定义
 
 - 全部 17 个 Task 的 checkbox 已勾选
-- `npm run typecheck` 0 错误，`npm run test` 101 个测试全绿
+- `npm run typecheck` 0 错误，`npm run test` 105 个测试全绿
 - spec §11 的 8 条验收全部通过
 - `src/core/accounting.mjs` 与上游 sha256 一致
 - 产出可安装的 `.vsix`
@@ -3295,3 +3304,23 @@ git log --oneline
 - 结果：**`npm audit` → found 0 vulnerabilities**；`npm run build` 与 `npm run typecheck` 均通过
 
 **本 Step 的已知状态**：`npx vitest run` 此时报 `No test files found, exiting with code 1`，属预期——第一个测试文件在 Task 2 才出现。
+
+## Task 3 执行记录
+
+**新增 `test/placeholder-image.test.ts`（4 个测试）** —— 计划的 Task 3 原本只有"用资源管理器打开看图"这一步人工确认。执行时该步骤**抓出了两个真 bug**：
+
+| 现象 | 原因 |
+|---|---|
+| 眼睛整个消失 | 判定顺序：`if (在身体内) return` 写在眼睛判定之前 → 眼睛分支永远不可达 |
+| 瞳孔消失、只剩白眼白 | 修了上一条后：眼白判定写在瞳孔判定之前 → 瞳孔分支永远不可达 |
+| 嘴消失 | 腹部判定 `return BELLY` 提前返回 → 写在它之后的嘴判定被短路 |
+
+这三个都是同一类错误（**`if` 链的判定顺序让分支不可达**），且在 96px 的显示尺寸下**肉眼几乎无法发现**——
+第一版图形看起来"像只蓝色的东西"，真实情况是眼睛、瞳孔、嘴**全都没画出来**。
+
+因此把那次临时验证固化成测试：用零依赖 PNG 解码器采样 7 个部位 + 背景的颜色。
+判定顺序再次写反时，测试会直接指出是哪个部位不对。
+
+> ⚠️ #1 用真实鲸鱼形象替换占位图时，此测试需同步更新或删除。
+
+测试总数因此由 101 变为 **105**。

@@ -1513,7 +1513,7 @@ Expected: 三个 dist 文件产出，无错误。
 Run: `npm run test`
 Expected: PASS（38 个测试）。
 
-- [ ] **Step 8: 🔍 M1 人工验收（关键的探针环节）**
+- [x] **Step 8: 🔍 M1 人工验收（关键的探针环节）**
 
 1. 在 VSCode 里打开 `D:\github_project\vscode_whale_widget`
 2. 按 `F5` → 弹出扩展开发宿主窗口
@@ -1533,11 +1533,11 @@ Expected（逐条核对，这是 spec §4.1 M1 的验收）：
 
 **若出现 ❌**：把整段报告与宿主窗口的 `帮助 → 切换开发人员工具 → Console` 报错贴出来，**不要继续 Task 8**——M1 的失败意味着分治桥方案需要重新设计。
 
-- [ ] **Step 9: 把 M1 结论写进 spec §12**
+- [x] **Step 9: 把 M1 结论写进 spec §12**
 
 把 spec `2026-09-19-skeleton-and-bridge-design.md` §12 表格中「webview CSP 对 blob / data URL 的限制 | M1 验证」一行的状态改为实测结果（`已验证` 或失败记录）。
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/ test/ docs/

@@ -57,4 +57,12 @@ npm run package   # 产出 .vsix
 
 ## 许可
 
-MIT。记账内核复用自 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget)（MIT, Copyright (c) 2026 MeteorNOX），详见 `NOTICE.md`。上游的美术素材不在 MIT 范围内，本项目未使用。
+- **代码**：MIT，见 `LICENSE`
+- **美术**（`media/whale-*.png`，侧边栏的鲸鱼少女形象）：**CC BY-NC-SA 4.0**，
+  **仅限非商业使用**，见 `LICENSE-ARTWORK` 与完整的署名链 `NOTICE.md`
+
+即：本项目免费且非商业。若想用于商业用途，替换掉 `media/whale-*.png` 即可
+（代码部分没有该限制）。
+
+记账内核复用自 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget)（MIT, Copyright (c) 2026 MeteorNOX），
+其 `assets/` 下的美术素材**不在 MIT 范围内，本项目未使用**。

@@ -1,0 +1,38 @@
+# 美术素材许可（Artwork License）
+
+## 适用范围
+
+本仓库中的以下文件是**美术素材**，**不属于 MIT 许可**的范围：
+
+- `media/whale-delighted.png`
+- `media/whale-sleepy.png`
+- `media/whale-determined.png`
+
+本仓库其余部分（`src/`、`tools/`、`test/` 等代码与脚本）继续按 MIT 许可发布，见 `LICENSE`。
+即：**代码 MIT，美术 CC BY-NC-SA 4.0**。
+
+## 许可
+
+上述美术素材及其改作，按 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+（CC BY-NC-SA 4.0）** 提供。许可全文见：
+
+<https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode>
+
+该许可的四条要点（以官方文本为准）：
+
+| 条款 | 含义 |
+|---|---|
+| **BY 署名** | 必须标明原作者与来源，并**说明是否做过改动**（改动清单见 `NOTICE.md`） |
+| **NC 非商业** | **不得用于商业目的**。本项目自身也是免费、非商业的 |
+| **SA 同许可** | 对素材的**改作**必须同样以 CC BY-NC-SA 4.0 释出（我们的缩放/裁切属于改作） |
+| 无额外限制 | 不得追加法律或技术措施限制他人依本许可使用 |
+
+## 署名
+
+完整署名链与来源见 `NOTICE.md`。简言之：原始鲸鱼少女角色设计、
+女仆版改设计（加入 DeepSeek 元素）、以及本皮肤素材分别来自三位不同的作者。
+
+## 商业使用
+
+**不允许。** 如果你想把本项目用于商业用途，必须先替换掉上述美术素材——
+代码部分是 MIT，换图即可继续商业使用。

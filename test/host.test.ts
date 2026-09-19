@@ -4,7 +4,7 @@ import { MEDIA_MAP_ELEMENT_ID } from '../src/webview/shim'
 
 const uris = {
   shim: 'vscode-webview-resource://x/dist/dshw-shim.js',
-  probe: 'vscode-webview-resource://x/dist/probe.js',
+  entry: 'vscode-webview-resource://x/dist/probe.js',
   media: 'vscode-webview-resource://x/media',
 }
 
@@ -20,13 +20,13 @@ describe('buildCsp', () => {
 })
 
 describe('buildHtml', () => {
-  it('注入两个脚本并带 nonce', () => {
+  it('注入入口脚本并带 nonce', () => {
     const html = buildHtml({ cspSource: 'vscode-webview-resource://x', nonce: 'NONCE123', uris, mediaMap: {} })
     expect(html).toContain('<script nonce="NONCE123" src="vscode-webview-resource://x/dist/dshw-shim.js"></script>')
     expect(html).toContain('<script nonce="NONCE123" src="vscode-webview-resource://x/dist/probe.js"></script>')
   })
 
-  it('shim 排在 probe 之前（probe 依赖 shim 先装好）', () => {
+  it('shim 排在入口脚本之前（入口依赖 shim 先装好）', () => {
     const html = buildHtml({ cspSource: 'c', nonce: 'n', uris, mediaMap: {} })
     expect(html.indexOf('dshw-shim.js')).toBeLessThan(html.indexOf('probe.js'))
   })
@@ -58,8 +58,10 @@ describe('buildHtml', () => {
     expect(html).toContain('img-src vscode-webview-resource://x')
   })
 
-  it('包含探针挂载点', () => {
-    const html = buildHtml({ cspSource: 'c', nonce: 'n', uris, mediaMap: {} })
-    expect(html).toContain('id="probe"')
+  it('根元素 id 与占位文案可定制（侧边栏用 app，探针用 probe）', () => {
+    const html = buildHtml({ cspSource: 'c', nonce: 'n', uris, mediaMap: {}, rootId: 'app' })
+    expect(html).toContain('<div id="app"></div>')
+    const probe = buildHtml({ cspSource: 'c', nonce: 'n', uris, mediaMap: {}, rootId: 'probe', rootPlaceholder: '正在自检…' })
+    expect(probe).toContain('<div id="probe">正在自检…</div>')
   })
 })

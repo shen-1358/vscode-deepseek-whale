@@ -46,7 +46,7 @@ export class WebviewHost {
       nonce,
       uris: {
         shim: asCheckedUri(['dist', 'dshw-shim.js']),
-        probe: asCheckedUri(['dist', 'probe.js']),
+        entry: asCheckedUri(['dist', 'probe.js']),
         media: asMediaUri(''),
       },
       mediaMap: this.options.mediaMap(asMediaUri),

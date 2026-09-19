@@ -28,7 +28,7 @@ async function checkMediaShim(): Promise<void> {
   const img = document.createElement('img')
   img.width = 96
   img.height = 96
-  img.alt = '占位鲸鱼'
+  img.alt = '鲸鱼少女'
   img.style.display = 'block'
   img.style.margin = '0 0 8px'
 

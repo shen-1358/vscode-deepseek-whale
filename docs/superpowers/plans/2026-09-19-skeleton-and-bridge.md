@@ -866,7 +866,7 @@ git commit -m "feat(webview): shim 的 URL 归一化与媒体映射纯逻辑"
 **Files:**
 - Modify: `src/webview/shim.ts`（追加实现，不改 Task 4 已有函数）
 
-- [ ] **Step 1: 追加拦截实现到 `src/webview/shim.ts`**
+- [x] **Step 1: 追加拦截实现到 `src/webview/shim.ts`**
 
 ```ts
 interface ShimResponse {
@@ -1060,22 +1060,22 @@ export function installShims(): { bridge: WhaleBridge; media: MediaRegistry } {
 
 其中 `patch` 辅助函数未被使用（上面三处是显式写的），删掉它以免 `noUnusedLocals` 报错——**最终版本不含 `patch` 函数与末尾的 `void patch`**。
 
-- [ ] **Step 2: 类型检查**
+- [x] **Step 2: 类型检查**
 
 Run: `npm run typecheck`
 Expected: 无错误。
 
-- [ ] **Step 3: 构建确认能打包为 IIFE**
+- [x] **Step 3: 构建确认能打包为 IIFE**
 
 Run: `npm run build`
 Expected: 输出包含 `dist/dshw-shim.js`，无警告。
 
-- [ ] **Step 4: 跑全量测试确认没破坏纯逻辑**
+- [x] **Step 4: 跑全量测试确认没破坏纯逻辑**
 
 Run: `npm run test`
 Expected: PASS（registry 15 + shim 12）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/webview/shim.ts

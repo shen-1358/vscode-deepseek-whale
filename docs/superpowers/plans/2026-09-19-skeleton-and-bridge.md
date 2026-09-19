@@ -2976,7 +2976,7 @@ git commit -m "feat(routes): balance.json / size.json / image.png 三条路由"
 **Files:**
 - Modify: `src/extension.ts`（替换 Task 7 的存根）
 
-- [ ] **Step 1: 重写 `src/extension.ts`**
+- [x] **Step 1: 重写 `src/extension.ts`**
 
 ```ts
 import * as vscode from 'vscode'
@@ -3066,17 +3066,17 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {}
 ```
 
-- [ ] **Step 2: 类型检查
+- [x] **Step 2: 类型检查
 
 Run: `npm run typecheck && npm run test`
 Expected: 类型无错误；测试全绿（registry 15 + shim 12 + host 7 + placeholder 4 + accounting 10 + store 6 + deepseek 13 + credentials 8 + refresh 8 + statusbar 11 + routes 11 = 105）。
 
-- [ ] **Step 3: 构建**
+- [x] **Step 3: 构建**
 
 Run: `npm run build`
 Expected: 三个 dist 文件，无错误。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/ test/
@@ -3638,4 +3638,37 @@ AssertionError: expected '¥7.10' to be 'JPY 7.10'
 **Task 15 会用真实路由替换掉存根**。
 
 **结果**：`npx vitest run` → **114 个测试全绿**（12 个文件）；`npm run typecheck` 退出码 0；
+`npm run build` 三入口成功。
+
+## Task 15 执行记录
+
+计划里的 `src/extension.ts` **原样落地，无缺陷**——依赖都在写这个 Task 之前
+就核对过签名（`host.broadcast` / `registerSidebar` / `disposeLog` 都存在），
+`NodeJS.Timeout` 的标注也没和 DOM 的 `setInterval` 签名打架。
+`tsc` 退出码 0，三入口构建成功，`grep -c stub dist/extension.js` 为 0（存根已被真实路由替换）。
+
+**计划外补充：`test/activate.test.ts`（2 个用例）**
+
+理由是**覆盖面缺口**：`extension.ts` 是唯一把凭据、刷新、状态栏、路由、侧边栏
+串起来的文件，而在此之前**没有任何测试加载过它**——13 个测试文件全绕开了它。
+意味着「路由表接的到底是真实实现还是 Task 7 的存根」「四条命令有没有注册全」
+「侧边栏有没有挂上」这些只能靠人工 F5 才能发现。而 Step 4 的人工验收是
+**整条链路上最贵的一步**（要真 VSCode + 真密钥），不该把廉价可自动化的错误留到那里。
+
+做法：`vi.mock('vscode', factory)` 把宿主整个顶掉（实测对**未安装**的 `vscode`
+模块有效），然后：
+
+1. 调 `activate(fakeContext)`，断言侧边栏注册 id、四条命令的名字集合、状态栏初值；
+2. 拿 `registerWebviewViewProvider` 捕获到的 provider，`resolveWebviewView` 挂上假 webview，
+   **走真实信封**发一条 `balance.json` 请求，断言回包是 `{ok: false, code: 'NO_KEY'}`。
+
+第 2 条同时穿过了 `WebviewHost.attach` → `buildHtml`（断言 HTML 里有 nonce 与
+`dshw-shim.js`）→ `decodeRequest` → `RouteTable.dispatch` → `registerBalanceRoutes`
+→ `encodeResponse`。若路由还是存根，断言会直接失败（存根返回 `ok: true` + `stub: true`）。
+
+未配置密钥时走的是「无密钥」分支——**不碰网络**，所以这个测试是确定性的、离线可跑的。
+真实网络路径（有密钥 → api.deepseek.com）仍留给 Step 4 人工验收。
+
+**结果**：`npx vitest run` → **116 个测试全绿**（13 个文件，比计划的 105 多 11：
+Task 9 补 8 + Task 12 补 1 + 本 Task 补 2）；`npm run typecheck` 退出码 0；
 `npm run build` 三入口成功。

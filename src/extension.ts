@@ -1,20 +1,33 @@
 import * as vscode from 'vscode'
-import { jsonResponse, RouteTable } from './routes/registry'
+import { Credentials } from './credentials'
+import { createRefresher } from './core/refresh'
+import { FileStore } from './core/store'
+import { fetchBalance } from './provider/deepseek'
+import { RouteTable } from './routes/registry'
+import { registerBalanceRoutes } from './routes/balance'
+import { StatusBar } from './statusbar'
 import { WebviewHost } from './webview/host'
 import { registerSidebar } from './webview/sidebar'
-import { log, showLog } from './log'
+import { disposeLog, log, showLog } from './log'
 
 export function activate(context: vscode.ExtensionContext): void {
+  const store = new FileStore(context.globalStorageUri.fsPath)
+  const credentials = new Credentials(context)
+  const statusBar = new StatusBar()
+
+  const refresh = createRefresher({
+    resolveKey: () => credentials.resolve(),
+    fetchBalance: key => fetchBalance({ key }),
+    store,
+    now: () => Date.now(),
+    log,
+  })
+
   const routeTable = new RouteTable()
-
-  // M1 阶段的存根路由，Task 14 会用真实实现替换
-  routeTable.register('/dsh-whale/balance.json', () =>
-    jsonResponse({ ok: true, totalBalance: 0, currency: 'CNY', todayUsage: null, stub: true })
-  )
-
-  routeTable.register('/dsh-whale/size.json', req => {
-    if (req.method === 'PUT') return jsonResponse({ ok: true })
-    return jsonResponse({})
+  registerBalanceRoutes(routeTable, {
+    refresh,
+    readSize: async () => (await store.readJson<Record<string, unknown>>('size.json')) ?? {},
+    writeSize: value => store.writeJson('size.json', value),
   })
 
   const host = new WebviewHost({
@@ -28,15 +41,45 @@ export function activate(context: vscode.ExtensionContext): void {
 
   registerSidebar(context, host)
 
+  const runRefresh = async (force: boolean): Promise<void> => {
+    const result = await refresh(force)
+    statusBar.renderResult(result)
+    host.broadcast('balance', result)
+  }
+
+  const intervalSeconds = (): number =>
+    Math.max(15, vscode.workspace.getConfiguration('whaleWidget').get<number>('refreshIntervalSeconds', 60))
+
+  let timer: NodeJS.Timeout | undefined
+  const restartTimer = (): void => {
+    if (timer) clearInterval(timer)
+    timer = setInterval(() => { void runRefresh(false) }, intervalSeconds() * 1000)
+  }
+  restartTimer()
+
   context.subscriptions.push(
-    vscode.commands.registerCommand('whale.showLog', showLog),
-    vscode.commands.registerCommand('whale.refresh', () => {
-      host.broadcast('probe', { at: Date.now() })
+    vscode.commands.registerCommand('whale.refresh', () => runRefresh(true)),
+    vscode.commands.registerCommand('whale.setApiKey', async () => {
+      const ok = await credentials.promptAndStore()
+      if (ok) await runRefresh(true)
     }),
-    host
+    vscode.commands.registerCommand('whale.clearApiKey', async () => {
+      await credentials.clear()
+      log('已清除保存的 API Key')
+      statusBar.render({ state: 'no-key' })
+      void vscode.window.showInformationMessage('已清除保存的 DeepSeek API Key')
+    }),
+    vscode.commands.registerCommand('whale.showLog', showLog),
+    vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('whaleWidget.refreshIntervalSeconds')) restartTimer()
+    }),
+    { dispose: () => { if (timer) clearInterval(timer) } },
+    { dispose: () => statusBar.dispose() },
+    { dispose: disposeLog }
   )
 
-  log('鲸鱼记账挂件已激活（M1 探针）')
+  log('鲸鱼记账挂件已激活')
+  void runRefresh(false)
 }
 
 export function deactivate(): void {}

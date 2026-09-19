@@ -39,7 +39,7 @@
 | D7 | 素材管线：**锁定上游 commit + sha256 校验**下载 → 零依赖脚本缩到长边 512px → 成品进 git | 可复现、可审计；构建与运行期不依赖网络 |
 | D8 | 占位鲸鱼退役：删除 `media/placeholder-whale.png`、`tools/make-placeholder.mjs`、`test/placeholder-image.test.ts` | 计划 Task 3 已预留注释："#1 用真实形象替换占位图时，此测试需同步更新或删除" |
 | D9 | M1 探针页退出侧边栏，改由命令 `whale.showSelfCheck` 用独立面板打开 | 保住自检能力（CSP/shim 改动后的第一道排查工具） |
-| D10 | **表情由宿主计算**并随数据下发（路由响应与广播都带 `mood` 字段） | webview 读不到 `workspace` 配置；两处用同一个纯函数避免不一致 |
+| D10 | **表情由宿主计算**（`moodOf` 注入路由，每次调用现读配置）；**广播只当"该刷新了"的信号**，前端收到后重新 `fetch` 同一个 `balance.json` | webview 读不到 `workspace` 配置；单一数据形状避免"事件负载与路由响应"两套字段分叉 |
 | D11 | 侧边栏的"设置 API Key"/"立即刷新"按钮走新增路由 `/dsh-whale/command.json`（**命令白名单**） | webview 不能直接执行命令；白名单保证只放行我们自己的命令 |
 
 ---
@@ -179,24 +179,27 @@ export function pickMood(input: MoodInput): Mood
 
 ```
 webview 加载
-  └─ installShims()
-       ├─ fetch('/dsh-whale/balance.json')      ← 首屏：含 mood 字段
-       └─ 监听 'dshw:event'（name === 'balance'） ← 之后：宿主推送
+  ├─ installShims()
+  ├─ fetch('/dsh-whale/balance.json')          ← 唯一取数入口（响应含 mood）
+  └─ 监听 'dshw:event'：name === 'balance' 时**重新 fetch 同一 URL**
+       （不轮询；也不用事件负载，避免两套字段形状）
 
 宿主
   ├─ 定时器 / 命令 → refresh() → RefreshResult
-  ├─ mood = pickMood({ state, balance, threshold })     ← 与路由共用同一纯函数
-  ├─ statusBar.renderResult(result)                     ← 状态栏（文字，不变）
-  └─ host.broadcast('balance', { ...result, mood })
+  ├─ statusBar.renderResult(result)                    ← 状态栏（文字，不变）
+  └─ host.broadcast('balance', result)                 ← 只当信号，负载界面不读
+
+阈值配置变化
+  └─ 不拉网络：直接 broadcast('balance', ...) → 界面重新 fetch
+       → 路由用**当前**配置算 mood，表情当场变
 
 按钮
   └─ POST /dsh-whale/command.json { command: 'whale.setApiKey' }
        └─ 宿主：白名单校验 → vscode.commands.executeCommand
 ```
 
-- 阈值配置变化时：不重新拉网络，直接 `host.broadcast('balance', { ...refresh.last(), mood })` 让界面立刻换脸
-- **`mood` 在成功与失败分支都要下发**：路由的 `{ok:false, code}` 分支同样带 `mood`（否则未配置密钥时前端不知道该显示 `sleepy`）；两个分支都用 `moodOf(result)` 计算，不做特例
-- 首屏 `fetch` 失败（理论上只有宿主未接线时）：显示一行兜底文案，不空白、不抛未捕获异常
+**`mood` 在成功与失败分支都要下发**：路由的 `{ok:false, code}` 分支同样带 `mood`（否则未配置密钥时前端不知道该显示 `sleepy`）；两个分支都用 `moodOf(result)` 计算，不做特例。
+首屏 `fetch` 失败（理论上只有宿主未接线时）：显示一行兜底文案，不空白、不抛未捕获异常。
 
 ---
 
@@ -207,12 +210,13 @@ webview 加载
 | 文件 | 职责 |
 |---|---|
 | `src/webview/mood.ts` | 表情规则纯函数（不 import `vscode`） |
-| `src/webview/sidebar-ui.ts` | 侧边栏前端（第四构建入口） |
+| `src/webview/sidebar-ui.ts` | **DOM 胶水层**：`fetch` + 监听 `dshw:event` + 把 `buildPanelView` 的结果写到 DOM（DOM 部分不在 Node 里测，靠 F5 人工验证） |
+| `src/webview/sidebar-view.ts` | 侧边栏**纯视图模型**（payload → 文案/按钮/表情，不碰 DOM、不 import `vscode`） |
 | `src/routes/command.ts` | 命令白名单路由 |
 | `tools/fetch-artwork.mjs` / `tools/resize-artwork.mjs` | 素材管线 |
 | `media/whale-{delighted,sleepy,determined}.png` | 成品素材（进 git） |
 | `LICENSE-ARTWORK` | 美术许可说明 |
-| `test/mood.test.ts` / `test/artwork.test.ts` / `test/notice.test.ts` / `test/routes-command.test.ts` | 测试 |
+| `test/mood.test.ts` / `test/sidebar-view.test.ts` / `test/artwork.test.ts` / `test/notice.test.ts` / `test/routes-command.test.ts` | 测试 |
 
 **修改**
 
@@ -223,7 +227,7 @@ webview 加载
 | `src/webview/probe.ts` | 媒体断言的文件名改为 `whale-delighted.png` |
 | `src/routes/balance.ts` | 响应增加 `mood` 字段（注入 `moodOf`） |
 | `src/extension.ts` | 接线：新入口、阈值配置、配置变更重广播、自检命令、命令路由 |
-| `src/statusbar.ts` / `src/statusview.ts` | 不变（状态栏仍是文字） |
+| `src/statusbar.ts` / `src/statusview.ts` | 渲染逻辑不变；仅把 `beijingStamp` 与 `formatMoney` 导出供侧边栏复用（两个模块都是纯函数，无 `vscode` 依赖） |
 | `esbuild.mjs` | 增加 `sidebar-ui` 入口 |
 | `package.json` | 配置项 `lowBalanceThreshold`、`license` 字段、`dist/sidebar-ui.js` 相关 |
 | `NOTICE.md` / `README.md` | 见 §5 |
@@ -240,10 +244,11 @@ webview 加载
 | 文件 | 覆盖 |
 |---|---|
 | `test/mood.test.ts` | 三条判定分支 + 边界（`balance === threshold` 取 `delighted`）+ `balance` 为 `undefined`/`NaN` + `stale` 不影响结果 |
+| `test/sidebar-view.test.ts` | 五种 payload（正常 / 余额低 / 未配置 / Key 无效 / 断网沿用旧值）× 文案、`note`、按钮、`alt`；`mood` 缺失时兜底 |
 | `test/artwork.test.ts` | 三张成品存在；长边 `=== 512`；PNG 颜色类型 `=== 6`（RGBA）；**存在 alpha < 255 的像素**（证明真是抠图而非白底）；`media/raw/` 不存在于 git 索引（用 `git ls-files` 断言） |
 | `test/notice.test.ts` | `NOTICE.md` 必含：三位署名标识（`62155430`、`18604994`、`Small-tailqwq`）、`CC BY-NC-SA 4.0`、上游仓库 URL、"非商业"字样；`LICENSE-ARTWORK` 存在且含官方链接 |
 | `test/routes-command.test.ts` | 白名单内命令 → 200 且真的调用；白名单外 → 403；非 `POST`（GET/PUT）→ 405；缺 `command` → 400 |
-| `test/html.test.ts` | 补：传入自定义 `entry` 与 `rootId` 时 HTML 正确；仍无裸尖括号 |
+| `test/host.test.ts` | 补：传入自定义 `entry` 与 `rootId` 时 HTML 正确；仍无裸尖括号 |
 | `test/activate.test.ts` | 更新：断言侧边栏页加载的是 `sidebar-ui.js`，且 `balance.json` 响应含 `mood` |
 
 > 为什么给 `NOTICE.md` 写测试：署名是 **CC BY 的强制义务**，删掉它是"测试全绿但违法"的那类回归，值得用一条断言钉住。

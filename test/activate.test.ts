@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   commands: new Map<string, (...args: unknown[]) => unknown>(),
   received: [] as unknown[],
   webviewHtml: '',
+  webviews: [] as unknown[],
+  panels: [] as { onDidDispose: (cb: () => void) => { dispose(): void } }[],
 }))
 
 vi.mock('vscode', () => {
@@ -49,7 +51,23 @@ vi.mock('vscode', () => {
       },
       showInformationMessage: async () => undefined,
       showInputBox: async () => undefined,
+      createWebviewPanel: () => {
+        const webview = {
+          cspSource: 'vscode-webview://panel',
+          asWebviewUri: (uri: unknown) => `webview://${String(uri)}`,
+          get html() { return mocks.webviewHtml },
+          set html(value: string) { mocks.webviewHtml = value },
+          options: {},
+          postMessage: async () => true,
+          onDidReceiveMessage: () => ({ dispose() {} }),
+        }
+        mocks.webviews.push(webview)
+        const panel = { webview, onDidDispose: () => ({ dispose() {} }), dispose() {} }
+        mocks.panels.push(panel)
+        return panel
+      },
     },
+    ViewColumn: { Active: -1 },
     commands: {
       registerCommand: (name: string, cb: (...args: unknown[]) => unknown) => {
         mocks.commands.set(name, cb)
@@ -112,7 +130,7 @@ describe('activate', () => {
 
     expect(mocks.views.map(v => v.id)).toEqual(['whale.widget'])
     expect([...mocks.commands.keys()].sort())
-      .toEqual(['whale.clearApiKey', 'whale.refresh', 'whale.setApiKey', 'whale.showLog'])
+      .toEqual(['whale.clearApiKey', 'whale.refresh', 'whale.setApiKey', 'whale.showLog', 'whale.showSelfCheck'].sort())
     expect(mocks.statusItems[0]?.text).toBe('$(key) 鲸鱼 · 未配置')
   })
 
@@ -122,7 +140,8 @@ describe('activate', () => {
     const bridge = mountWebview()
 
     expect(mocks.webviewHtml).toContain('nonce-')
-    expect(mocks.webviewHtml).toContain('dshw-shim.js')
+    expect(mocks.webviewHtml).toContain('sidebar-ui.js')
+    expect(mocks.webviewHtml).toContain('<div id="app"></div>')
 
     const response = await bridge.request({
       ch: CHANNEL, id: 7, kind: 'request',
@@ -132,6 +151,17 @@ describe('activate', () => {
     expect(response.id).toBe(7)
     expect(response.kind).toBe('response')
     expect(response.status).toBe(200)
-    expect(JSON.parse(response.body)).toMatchObject({ ok: false, code: 'NO_KEY' })
+    expect(JSON.parse(response.body)).toMatchObject({ ok: false, code: 'NO_KEY', mood: 'sleepy' })
+  })
+
+  it('自检命令打开独立面板并挂载探针页', async () => {
+    activate(fakeContext() as never)
+    await new Promise(resolve => setTimeout(resolve, 5))
+    const show = mocks.commands.get('whale.showSelfCheck')
+    expect(typeof show).toBe('function')
+    show?.()
+    expect(mocks.webviews.length).toBe(1)
+    expect(mocks.webviewHtml).toContain('probe.js')
+    expect(mocks.webviewHtml).toContain('<div id="probe">')
   })
 })

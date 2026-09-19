@@ -1,13 +1,15 @@
 import * as vscode from 'vscode'
 import { Credentials } from './credentials'
 import { createRefresher } from './core/refresh'
+import type { RefreshResult } from './core/refresh'
 import { FileStore } from './core/store'
 import { fetchBalance } from './provider/deepseek'
 import { RouteTable } from './routes/registry'
 import { registerBalanceRoutes } from './routes/balance'
+import { registerCommandRoute } from './routes/command'
 import { StatusBar } from './statusbar'
 import { WebviewHost } from './webview/host'
-import { pickMood } from './webview/mood'
+import { pickMood, type Mood } from './webview/mood'
 import { registerSidebar } from './webview/sidebar'
 import { disposeLog, log, showLog } from './log'
 
@@ -24,20 +26,32 @@ export function activate(context: vscode.ExtensionContext): void {
     log,
   })
 
+  const threshold = (): number =>
+    vscode.workspace.getConfiguration('whaleWidget').get<number>('lowBalanceThreshold', 5)
+
+  const moodOf = (result: RefreshResult): Mood =>
+    pickMood({ state: result.state, balance: result.balance, threshold: threshold() })
+
   const routeTable = new RouteTable()
   registerBalanceRoutes(routeTable, {
     refresh,
-    // 临时：阈值取默认 5，Task 10 起改为读 whaleWidget.lowBalanceThreshold
-    moodOf: result => pickMood({ state: result.state, balance: result.balance, threshold: 5 }),
+    moodOf,
     readSize: async () => (await store.readJson<Record<string, unknown>>('size.json')) ?? {},
     writeSize: value => store.writeJson('size.json', value),
+  })
+
+  registerCommandRoute(routeTable, {
+    execute: async command => { await vscode.commands.executeCommand(command) },
   })
 
   const host = new WebviewHost({
     extensionUri: context.extensionUri,
     routeTable,
     mediaMap: mediaUri => ({
-      '/dsh-whale/image.png': mediaUri('placeholder-whale.png'),
+      '/dsh-whale/image.png': mediaUri('whale-delighted.png'),
+      '/dsh-whale/whale-delighted.png': mediaUri('whale-delighted.png'),
+      '/dsh-whale/whale-sleepy.png': mediaUri('whale-sleepy.png'),
+      '/dsh-whale/whale-determined.png': mediaUri('whale-determined.png'),
     }),
     log,
   })
@@ -73,8 +87,26 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showInformationMessage('已清除保存的 DeepSeek API Key')
     }),
     vscode.commands.registerCommand('whale.showLog', showLog),
+    vscode.commands.registerCommand('whale.showSelfCheck', () => {
+      const panel = vscode.window.createWebviewPanel(
+        'whaleSelfCheck',
+        '鲸鱼 · 通信层自检',
+        vscode.ViewColumn.Active,
+        { enableScripts: true }
+      )
+      host.attach({
+        webview: panel.webview,
+        onDidReceiveMessage: cb => panel.webview.onDidReceiveMessage(cb),
+      }, 'probe')
+      panel.onDidDispose(() => host.detach(panel.webview))
+    }),
     vscode.workspace.onDidChangeConfiguration(event => {
       if (event.affectsConfiguration('whaleWidget.refreshIntervalSeconds')) restartTimer()
+      if (event.affectsConfiguration('whaleWidget.lowBalanceThreshold')) {
+        // 不重新拉网络：广播只是"该重新取数了"的信号，界面会重新走 balance.json，
+        // 路由在那一刻用新阈值算 mood
+        host.broadcast('balance', refresh.last() ?? {})
+      }
     }),
     { dispose: () => { if (timer) clearInterval(timer) } },
     { dispose: () => statusBar.dispose() },

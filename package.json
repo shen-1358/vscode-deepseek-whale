@@ -14,7 +14,8 @@
       { "command": "whale.setApiKey", "title": "鲸鱼: 设置 DeepSeek API Key" },
       { "command": "whale.clearApiKey", "title": "鲸鱼: 清除已保存的 API Key" },
       { "command": "whale.refresh", "title": "鲸鱼: 立即刷新余额" },
-      { "command": "whale.showLog", "title": "鲸鱼: 显示日志" }
+      { "command": "whale.showLog", "title": "鲸鱼: 显示日志" },
+      { "command": "whale.showSelfCheck", "title": "鲸鱼: 显示通信层自检页" }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -39,6 +40,12 @@
           "type": "string",
           "default": "DEEPSEEK_API_KEY",
           "description": "未保存密钥时回退读取的环境变量名"
+        },
+        "whaleWidget.lowBalanceThreshold": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "description": "余额低于该数字时，侧边栏的鲸鱼少女变为「坚定」表情。按当前币种的数字直接比较，不做汇率换算"
         }
       }
     }

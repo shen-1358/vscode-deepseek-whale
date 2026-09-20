@@ -1,4 +1,4 @@
-# vscode_whale_widget
+# vscode_deepseek_whale
 
 在 VSCode 里实时查看 DeepSeek API 余额的小鲸鱼挂件。
 
